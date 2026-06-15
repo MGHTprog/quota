@@ -131,6 +131,19 @@ DMG 默认包含固定 Finder 安装窗口布局：左侧为 `Quota.app`，右�
 
 Quota 会启动 Codex 的 `app-server` 子进程，通过 stdin/stdout 上的 JSON-RPC 读取配额数据，并每 2 分钟刷新一次。
 
+## 隐私
+
+Quota 通过 Codex `app-server` 在本地读取 Codex 配额数据，不会将配额数据或账户信息上传到任何第三方服务。
+
+代理、快捷键和语言设置由 macOS 应用偏好设置保存在本地。
+
+## 常见问题
+
+- 菜单栏没有图标：请从 `Applications` 启动 `Quota.app`，不要直接运行 `.build/release/Quota` 裸二进制。
+- 没有配额数据：请确认已安装 Codex CLI 或 Codex.app，并已登录拥有 rate limit 数据的账户。
+- 找不到 Codex：请确认 `codex` 在 `PATH` 中，或已将 `Codex.app` 安装到 `/Applications`。
+- 没有通知：请在系统设置中检查 Quota 的 macOS 通知权限。
+
 ## 系统要求
 
 - macOS 14 Sonoma 或更高版本
@@ -155,7 +168,13 @@ swift run 2>&1 | grep "\[Quota\]"
 
 ## 贡献
 
-欢迎提交 Issue 和 PR。
+- 发现问题？请提交 [Issue](https://github.com/slightlee/quota/issues)。
+- 有好想法？欢迎提交 [Pull Request](https://github.com/slightlee/quota/pulls)。
+- 如果 Quota 对你有帮助，可以给项目一个 Star 支持。
+
+## 社区
+
+- [LINUX DO](https://linux.do)
 
 ## 许可证
 

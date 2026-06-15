@@ -125,6 +125,19 @@ The DMG includes a Finder installer layout with `Quota.app` on the left and an `
 
 Quota starts Codex `app-server` as a child process and reads quota data through JSON-RPC over stdin/stdout. It refreshes quota data every 2 minutes.
 
+## Privacy
+
+Quota reads Codex rate limit data locally through Codex `app-server`. It does not upload quota data or account information to any third-party service.
+
+Proxy, hotkey, and language settings are stored locally by macOS app preferences.
+
+## Troubleshooting
+
+- No menu bar icon: launch `Quota.app` from `Applications` instead of running the raw `.build/release/Quota` executable.
+- No quota data: make sure Codex CLI or Codex.app is installed and signed in with an account that exposes rate limit data.
+- Codex cannot be found: ensure `codex` is available in `PATH`, or install `Codex.app` in `/Applications`.
+- No notifications: check macOS notification permissions for Quota in System Settings.
+
 ## Requirements
 
 - macOS 14 Sonoma or later
@@ -149,7 +162,13 @@ swift run 2>&1 | grep "\[Quota\]"
 
 ## Contributing
 
-Issues and pull requests are welcome.
+- Found an issue? Please open an [Issue](https://github.com/slightlee/quota/issues).
+- Have a good idea? Pull requests are welcome via [Pull Requests](https://github.com/slightlee/quota/pulls).
+- If Quota is useful to you, consider giving the project a star.
+
+## Community
+
+- [LINUX DO](https://linux.do)
 
 ## License
 
