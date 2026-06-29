@@ -17,6 +17,7 @@ enum LocalizationKey: String {
     case language = "settings.tab.language"
     case save = "settings.button.save"
     case cancel = "settings.button.cancel"
+    case appVersion = "settings.app.version"
 
     case proxySubtitle = "settings.proxy.subtitle"
     case proxyMode = "settings.proxy.mode"

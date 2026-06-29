@@ -16,6 +16,7 @@
 "settings.tab.language" = "语言";
 "settings.button.save" = "保存";
 "settings.button.cancel" = "取消";
+"settings.app.version" = "版本 %@";
 
 "settings.proxy.subtitle" = "选择代理模式以连接 Codex 服务";
 "settings.proxy.mode" = "模式";

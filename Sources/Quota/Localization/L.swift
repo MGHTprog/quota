@@ -23,6 +23,7 @@ enum L {
     static var languageTitle: String { tr(.language) }
     static var save: String { tr(.save) }
     static var cancel: String { tr(.cancel) }
+    static func appVersion(_ version: String) -> String { tr(.appVersion, version) }
 
     static var proxySubtitle: String { tr(.proxySubtitle) }
     static var proxyMode: String { tr(.proxyMode) }

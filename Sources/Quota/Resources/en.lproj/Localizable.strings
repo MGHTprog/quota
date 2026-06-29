@@ -16,6 +16,7 @@
 "settings.tab.language" = "Language";
 "settings.button.save" = "Save";
 "settings.button.cancel" = "Cancel";
+"settings.app.version" = "Version %@";
 
 "settings.proxy.subtitle" = "Choose a proxy mode for connecting to Codex services";
 "settings.proxy.mode" = "Mode";

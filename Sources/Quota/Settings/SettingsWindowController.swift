@@ -105,6 +105,7 @@ private final class SettingsViewController: NSViewController {
     private let languageSubtitleLabel = NSTextField(labelWithString: "")
     private let languageLabel = NSTextField(labelWithString: "")
     // Buttons
+    private let versionLabel = NSTextField(labelWithString: "")
     private let saveButton = NSButton(title: "", target: nil, action: nil)
     private let cancelButton = NSButton(title: "", target: nil, action: nil)
 
@@ -177,6 +178,10 @@ private final class SettingsViewController: NSViewController {
         languageContainer.isHidden = true
 
         // ── Button row ──
+        versionLabel.font = .systemFont(ofSize: 11, weight: .regular)
+        versionLabel.textColor = .secondaryLabelColor
+        versionLabel.setContentHuggingPriority(.required, for: .horizontal)
+
         saveButton.bezelStyle = .rounded
         saveButton.keyEquivalent = "\r"
         saveButton.target = self
@@ -190,7 +195,7 @@ private final class SettingsViewController: NSViewController {
         let spacer = NSView()
         spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
 
-        let buttonRow = NSStackView(views: [spacer, cancelButton, saveButton])
+        let buttonRow = NSStackView(views: [versionLabel, spacer, cancelButton, saveButton])
         buttonRow.orientation = .horizontal
         buttonRow.spacing = 10
         buttonRow.alignment = .centerY
@@ -386,6 +391,7 @@ private final class SettingsViewController: NSViewController {
         languageSubtitleLabel.stringValue = L.languageSubtitle
         languageLabel.stringValue = L.languageTitle
 
+        versionLabel.stringValue = L.appVersion(AppMetadata.current.version)
         saveButton.title = L.save
         cancelButton.title = L.cancel
     }
