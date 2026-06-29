@@ -5,10 +5,15 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_NAME="Quota"
 APP_DIR="$ROOT_DIR/.build/package/$APP_NAME.app"
 INFO_PLIST="$ROOT_DIR/Packaging/Info.plist"
+VERSION_SCRIPT="$ROOT_DIR/Scripts/version.sh"
 ICONSET_DIR="$ROOT_DIR/Assets/AppIcon.iconset"
 ICON_FILE="$APP_DIR/Contents/Resources/AppIcon.icns"
 MENU_BAR_ICON="$ROOT_DIR/Sources/Quota/Resources/MenuBarIcon.png"
 RESOURCE_BUNDLE_NAME="${APP_NAME}_$APP_NAME.bundle"
+
+source "$VERSION_SCRIPT"
+APP_VERSION="$(resolve_app_version "$ROOT_DIR")"
+APP_BUILD_VERSION="$(resolve_build_version "$ROOT_DIR")"
 
 # Support both universal binary paths built with --arch and default paths.
 BUILD_DIR="$ROOT_DIR/.build/apple/Products/Release"
@@ -35,6 +40,8 @@ rm -rf "$APP_DIR"
 mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources"
 
 cp "$INFO_PLIST" "$APP_DIR/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $APP_VERSION" "$APP_DIR/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $APP_BUILD_VERSION" "$APP_DIR/Contents/Info.plist"
 printf "APPL????" > "$APP_DIR/Contents/PkgInfo"
 cp "$EXECUTABLE" "$APP_DIR/Contents/MacOS/$APP_NAME"
 chmod 755 "$APP_DIR/Contents/MacOS/$APP_NAME"
@@ -62,4 +69,5 @@ fi
 
 codesign --force --deep --sign - "$APP_DIR"
 
+echo "Version: $APP_VERSION ($APP_BUILD_VERSION)"
 echo "$APP_DIR"

@@ -6,23 +6,18 @@ APP_NAME="Quota"
 PACKAGE_SCRIPT="$ROOT_DIR/Scripts/package-app.sh"
 STAGING_DIR="$ROOT_DIR/.build/dmg-staging"
 DMG_DIR="$ROOT_DIR/.build"
-VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$ROOT_DIR/Packaging/Info.plist")
 DMG_SUFFIX="${DMG_SUFFIX:-}"
-if [[ -n "$DMG_SUFFIX" ]]; then
-  DMG_NAME="$APP_NAME-$VERSION-$DMG_SUFFIX.dmg"
-  TMP_DMG_PATH="$DMG_DIR/$APP_NAME-$VERSION-$DMG_SUFFIX.tmp.dmg"
-else
-  DMG_NAME="$APP_NAME-$VERSION.dmg"
-  TMP_DMG_PATH="$DMG_DIR/$APP_NAME-$VERSION.tmp.dmg"
-fi
-DMG_PATH="$DMG_DIR/$DMG_NAME"
 MOUNT_DIR="$ROOT_DIR/.build/dmg-mount"
+TMP_DMG_PATH=""
+DMG_PATH=""
 
 cleanup() {
   hdiutil detach "$MOUNT_DIR" -quiet 2>/dev/null || true
   rm -rf "$STAGING_DIR"
   rm -rf "$MOUNT_DIR"
-  rm -f "$TMP_DMG_PATH"
+  if [[ -n "$TMP_DMG_PATH" ]]; then
+    rm -f "$TMP_DMG_PATH"
+  fi
 }
 trap cleanup EXIT
 
@@ -35,6 +30,17 @@ if [[ ! -d "$APP_DIR" ]]; then
   echo "Error: $APP_DIR not found" >&2
   exit 1
 fi
+
+APP_INFO_PLIST="$APP_DIR/Contents/Info.plist"
+VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$APP_INFO_PLIST")
+if [[ -n "$DMG_SUFFIX" ]]; then
+  DMG_NAME="$APP_NAME-$VERSION-$DMG_SUFFIX.dmg"
+  TMP_DMG_PATH="$DMG_DIR/$APP_NAME-$VERSION-$DMG_SUFFIX.tmp.dmg"
+else
+  DMG_NAME="$APP_NAME-$VERSION.dmg"
+  TMP_DMG_PATH="$DMG_DIR/$APP_NAME-$VERSION.tmp.dmg"
+fi
+DMG_PATH="$DMG_DIR/$DMG_NAME"
 
 # ── 2. Prepare DMG contents ──
 echo "▸ Preparing DMG contents ..."
