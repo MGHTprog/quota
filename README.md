@@ -15,7 +15,7 @@ Quota is a lightweight macOS menu bar app for monitoring [Codex](https://github.
 
 ## Features
 
-- Menu bar quota overview for Codex 5-hour and weekly limits
+- Menu bar quota overview for Codex 5-hour and weekly limits, plus reset credits when available
 - Touch Bar display when Terminal or Codex is the active app
 - macOS notifications when quota is running low
 - Automatic refresh every 2 minutes, plus manual refresh
@@ -62,7 +62,7 @@ Do not install the raw `.build/release/Quota` executable directly. Notifications
 
 After launch, Quota appears in the macOS menu bar. Wait a few seconds for the first quota refresh.
 
-- Click the menu bar icon to view 5-hour and weekly quota details
+- Click the menu bar icon to view 5-hour, weekly, and reset credit details
 - Click `Refresh` or press `⌘R` to refresh manually
 - Click `Settings` to configure proxy, global hotkey, and language options
 - Click `Quit` or press `⌘Q` to exit
@@ -123,7 +123,7 @@ The DMG includes a Finder installer layout with `Quota.app` on the left and an `
  └──────────────────────────┘             └──────────────────────┘
 ```
 
-Quota starts Codex `app-server` as a child process and reads quota data through JSON-RPC over stdin/stdout. It refreshes quota data every 2 minutes.
+Quota starts Codex `app-server` as a child process and reads quota data, including reset credit availability when exposed by the account, through JSON-RPC over stdin/stdout. It refreshes quota data every 2 minutes.
 
 ## Privacy
 

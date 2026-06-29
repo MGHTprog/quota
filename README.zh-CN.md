@@ -15,7 +15,7 @@ Quota 是一个轻量级 macOS 菜单栏应用，用于实时查看 [Codex](http
 
 ## 特性
 
-- 菜单栏展示 Codex 5 小时额度和周额度
+- 菜单栏展示 Codex 5 小时额度、周额度，以及账户可用的重置额度
 - Terminal 或 Codex 前台时在 Touch Bar 展示额度
 - 额度不足时发送 macOS 通知
 - 每 2 分钟自动刷新，也支持手动刷新
@@ -68,7 +68,7 @@ ditto .build/package/Quota.app /Applications/Quota.app
 
 启动后菜单栏会出现 Quota 图标，稍等片刻自动获取数据。
 
-- 点击菜单栏图标查看 5 小时窗口和周限额
+- 点击菜单栏图标查看 5 小时窗口、周限额和重置额度
 - 点击 `刷新` 或按 `⌘R` 手动刷新
 - 点击 `设置` 配置代理、全局快捷键和显示语言
 - 点击 `退出` 或按 `⌘Q` 退出
@@ -129,7 +129,7 @@ DMG 默认包含固定 Finder 安装窗口布局：左侧为 `Quota.app`，右�
  └──────────────────────────┘             └──────────────────────┘
 ```
 
-Quota 会启动 Codex 的 `app-server` 子进程，通过 stdin/stdout 上的 JSON-RPC 读取配额数据，并每 2 分钟刷新一次。
+Quota 会启动 Codex 的 `app-server` 子进程，通过 stdin/stdout 上的 JSON-RPC 读取配额数据；如果账户返回重置额度，也会一并展示。数据每 2 分钟刷新一次。
 
 ## 隐私
 
