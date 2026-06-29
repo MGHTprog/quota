@@ -10,6 +10,7 @@ enum LocalizationKey: String {
     case weeklyTitle = "quota.window.weekly"
     case remaining = "quota.remaining"
     case reset = "quota.reset"
+    case resetCreditsSuffix = "quota.resetCredits.suffix"
 
     case proxy = "settings.tab.proxy"
     case hotkey = "settings.tab.hotkey"

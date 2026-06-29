@@ -3,6 +3,7 @@ import Foundation
 struct RateLimitDisplayState: Equatable {
     var fiveHour: LimitWindowDisplay
     var weekly: LimitWindowDisplay
+    var resetCreditsAvailable: Int?
     var updatedAt: Date
 }
 
@@ -45,6 +46,7 @@ enum LimitWindowKind: Equatable {
 
 struct GetAccountRateLimitsResponse: Decodable {
     var rateLimits: RateLimitSnapshot
+    var rateLimitResetCredits: RateLimitResetCredits?
 }
 
 struct AccountResponse: Decodable {
@@ -66,6 +68,10 @@ struct RateLimitWindow: Decodable {
     var resetsAt: TimeInterval?
 }
 
+struct RateLimitResetCredits: Decodable, Equatable {
+    var availableCount: Int?
+}
+
 extension GetAccountRateLimitsResponse {
     func displayState(now: Date = Date()) throws -> RateLimitDisplayState {
         guard let primary = rateLimits.primary, let secondary = rateLimits.secondary else {
@@ -75,6 +81,7 @@ extension GetAccountRateLimitsResponse {
         return RateLimitDisplayState(
             fiveHour: primary.display(kind: .fiveHour),
             weekly: secondary.display(kind: .weekly),
+            resetCreditsAvailable: rateLimitResetCredits?.availableCount,
             updatedAt: now
         )
     }

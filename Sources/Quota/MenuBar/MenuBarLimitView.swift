@@ -3,6 +3,7 @@ import AppKit
 final class MenuBarLimitView: NSView {
     private var model: String = "Codex"
     private var plan: String = ""
+    private var resetCreditsAvailable: Int?
     private var fiveHour = LimitWindowDisplay(kind: .fiveHour, usedPercent: 0, remainingPercent: 0, resetsAt: nil)
     private var weekly = LimitWindowDisplay(kind: .weekly, usedPercent: 0, remainingPercent: 0, resetsAt: nil)
 
@@ -21,6 +22,7 @@ final class MenuBarLimitView: NSView {
     func update(with state: RateLimitDisplayState) {
         fiveHour = state.fiveHour
         weekly = state.weekly
+        resetCreditsAvailable = state.resetCreditsAvailable
         needsDisplay = true
     }
 
@@ -53,7 +55,16 @@ final class MenuBarLimitView: NSView {
         if !plan.isEmpty {
             headerStr.append(NSAttributedString(string: " \(plan)", attributes: planAttr))
         }
-        headerStr.draw(at: NSPoint(x: pad, y: bounds.height - 20))
+        let headerOrigin = NSPoint(x: pad, y: bounds.height - 20)
+        headerStr.draw(at: headerOrigin)
+        if let resetCreditsAvailable {
+            drawResetCreditsText(
+                text: L.resetCreditsSuffix(resetCreditsAvailable),
+                after: headerStr,
+                at: headerOrigin,
+                maxX: w - pad
+            )
+        }
 
         // Sections
         drawSection(fiveHour, at: NSPoint(x: pad, y: topSectionY), width: w - pad * 2)
@@ -121,6 +132,28 @@ final class MenuBarLimitView: NSView {
             .foregroundColor: NSColor.labelColor
         ]
         data.resetText.draw(at: NSPoint(x: barX, y: barY - 16), withAttributes: resetAttr)
+    }
+
+    private func drawResetCreditsText(
+        text: String,
+        after header: NSAttributedString,
+        at origin: NSPoint,
+        maxX: CGFloat
+    ) {
+        let textAttr: [NSAttributedString.Key: Any] = [
+            .font: NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .regular),
+            .foregroundColor: NSColor.labelColor.withAlphaComponent(0.82)
+        ]
+        let textSize = (text as NSString).size(withAttributes: textAttr)
+        let headerWidth = header.size().width
+        let textX = origin.x + headerWidth + 8
+        guard textX + textSize.width <= maxX else { return }
+
+        let textOrigin = NSPoint(
+            x: textX,
+            y: origin.y + 1
+        )
+        text.draw(at: textOrigin, withAttributes: textAttr)
     }
 
     private func barColor(for percent: Double) -> NSColor {
