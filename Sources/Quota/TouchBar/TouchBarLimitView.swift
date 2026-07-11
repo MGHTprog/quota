@@ -99,6 +99,7 @@ private final class LimitRowView: NSView {
 
     func configureModel(text: String, color: NSColor, fontSize: CGFloat) {
         modelLabel.stringValue = text
+        modelLabel.toolTip = text
         modelLabel.font = .systemFont(ofSize: fontSize, weight: .semibold)
         modelLabel.textColor = color
     }
@@ -118,6 +119,7 @@ private final class LimitRowView: NSView {
         heightAnchor.constraint(equalToConstant: 12).isActive = true
 
         modelLabel.alignment = .left
+        modelLabel.lineBreakMode = .byTruncatingMiddle
 
         titleLabel.font = .systemFont(ofSize: 8, weight: .semibold)
         titleLabel.textColor = .labelColor
@@ -143,7 +145,7 @@ private final class LimitRowView: NSView {
 
         let spacer = NSView()
         spacer.translatesAutoresizingMaskIntoConstraints = false
-        spacer.widthAnchor.constraint(equalToConstant: 32).isActive = true
+        spacer.widthAnchor.constraint(equalToConstant: 64).isActive = true
 
         for v in [spacer, modelLabel, titleLabel, segmentStack, rightStack] {
             v.translatesAutoresizingMaskIntoConstraints = false

@@ -17,6 +17,7 @@ Quota is a lightweight macOS menu bar app for monitoring [Codex](https://github.
 
 - Menu bar quota overview for Codex 5-hour and weekly limits, plus reset credits when available
 - Touch Bar display when Terminal, ChatGPT, Codex, or IntelliJ IDEA is the active app
+- Shows the model used by the most recently active Codex thread on the Touch Bar, falling back to the configured default
 - macOS notifications when quota is running low
 - Automatic refresh every 2 minutes, plus manual refresh
 - Proxy settings for Codex app-server connectivity

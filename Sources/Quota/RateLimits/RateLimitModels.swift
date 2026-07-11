@@ -5,6 +5,7 @@ struct RateLimitDisplayState: Equatable {
     var weekly: LimitWindowDisplay
     var resetCreditsAvailable: Int?
     var updatedAt: Date
+    var model: String?
 }
 
 struct LimitWindowDisplay: Equatable {
@@ -57,6 +58,22 @@ struct AccountInfo: Decodable {
     var planType: String?
 }
 
+struct ThreadListResponse: Decodable {
+    var data: [ThreadSummary]
+}
+
+struct ThreadSummary: Decodable {
+    var path: String?
+}
+
+struct ConfigReadResponse: Decodable {
+    var config: CodexConfig
+}
+
+struct CodexConfig: Decodable {
+    var model: String?
+}
+
 struct RateLimitSnapshot: Decodable {
     var primary: RateLimitWindow?
     var secondary: RateLimitWindow?
@@ -82,7 +99,8 @@ extension GetAccountRateLimitsResponse {
             fiveHour: primary.display(kind: .fiveHour),
             weekly: secondary.display(kind: .weekly),
             resetCreditsAvailable: rateLimitResetCredits?.availableCount,
-            updatedAt: now
+            updatedAt: now,
+            model: nil
         )
     }
 }

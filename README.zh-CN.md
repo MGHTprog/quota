@@ -17,6 +17,7 @@ Quota 是一个轻量级 macOS 菜单栏应用，用于实时查看 [Codex](http
 
 - 菜单栏展示 Codex 5 小时额度、周额度，以及账户可用的重置额度
 - Terminal、ChatGPT、Codex 或 IntelliJ IDEA 前台时在 Touch Bar 展示额度
+- Touch Bar 显示最近活动 Codex 会话所使用的模型，取不到时回退到默认配置
 - 额度不足时发送 macOS 通知
 - 每 2 分钟自动刷新，也支持手动刷新
 - 支持 Codex app-server 连接代理配置
