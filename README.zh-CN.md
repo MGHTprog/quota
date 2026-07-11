@@ -11,19 +11,19 @@ Quota 是一个轻量级 macOS 菜单栏应用，用于实时查看 [Codex](http
 </p>
 
 > [!NOTE]
-> 使用前需要安装 Codex CLI 或 Codex.app，并确保账户有可读取的 rate limit 配额数据。
+> 使用前需要安装 Codex CLI 或 ChatGPT.app，并确保账户有可读取的 rate limit 配额数据。
 
 ## 特性
 
 - 菜单栏展示 Codex 5 小时额度、周额度，以及账户可用的重置额度
-- Terminal、Codex 或 IntelliJ IDEA 前台时在 Touch Bar 展示额度
+- Terminal、ChatGPT、Codex 或 IntelliJ IDEA 前台时在 Touch Bar 展示额度
 - 额度不足时发送 macOS 通知
 - 每 2 分钟自动刷新，也支持手动刷新
 - 支持 Codex app-server 连接代理配置
 - 支持全局快捷键打开菜单栏弹窗
 - 支持跟随系统、英文和简体中文语言切换
 - 以 accessory 模式运行，不占 Dock 栏
-- 通过 Codex `app-server` 读取数据，优先使用 `PATH` 中的 `codex`，找不到时回退到 `/Applications/Codex.app`
+- 通过 Codex `app-server` 读取数据，优先使用 `PATH` 中的 `codex`，找不到时依次回退到 ChatGPT.app 内置的 Codex 和旧版 Codex.app
 
 ## 截图
 
@@ -73,7 +73,7 @@ ditto .build/package/Quota.app /Applications/Quota.app
 - 点击 `设置` 配置代理、全局快捷键和显示语言
 - 点击 `退出` 或按 `⌘Q` 退出
 
-Touch Bar 只在 Terminal、Codex 或 IntelliJ IDEA 前台时显示，切换到其他应用后会隐藏。
+Touch Bar 只在 Terminal、ChatGPT、Codex 或 IntelliJ IDEA 前台时显示，切换到其他应用后会隐藏。
 
 ### 通知阈值
 
@@ -140,14 +140,14 @@ Quota 通过 Codex `app-server` 在本地读取 Codex 配额数据，不会将�
 ## 常见问题
 
 - 菜单栏没有图标：请从 `Applications` 启动 `Quota.app`，不要直接运行 `.build/release/Quota` 裸二进制。
-- 没有配额数据：请确认已安装 Codex CLI 或 Codex.app，并已登录拥有 rate limit 数据的账户。
-- 找不到 Codex：请确认 `codex` 在 `PATH` 中，或已将 `Codex.app` 安装到 `/Applications`。
+- 没有配额数据：请确认已安装 Codex CLI 或 ChatGPT.app，并已登录拥有 rate limit 数据的账户。
+- 找不到 Codex：请确认 `codex` 在 `PATH` 中，或已将 `ChatGPT.app` 安装到 `/Applications`。
 - 没有通知：请在系统设置中检查 Quota 的 macOS 通知权限。
 
 ## 系统要求
 
 - macOS 14 Sonoma 或更高版本
-- Codex CLI 或 Codex.app
+- Codex CLI 或 ChatGPT.app
 - 拥有可读取 rate limit 配额数据的 Codex 账户
 
 ## 开发

@@ -11,12 +11,14 @@ struct ActiveApplicationTouchBarPolicy {
 
     init(
         allowedBundleIdentifiers: Set<String> = [
+            "com.openai.chat",
             "com.openai.codex",
             "com.apple.Terminal",
             "com.jetbrains.intellij",
             "com.jetbrains.intellij.ce"
         ],
         allowedApplicationNames: Set<String> = [
+            "ChatGPT",
             "Codex",
             "IntelliJ IDEA",
             "IntelliJ IDEA CE"

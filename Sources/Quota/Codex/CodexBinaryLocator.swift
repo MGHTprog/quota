@@ -2,26 +2,29 @@ import Foundation
 
 struct CodexBinaryLocator {
     private let fileManager: FileManager
-    private let codexAppBinaryURL = URL(fileURLWithPath: "/Applications/Codex.app/Contents/Resources/codex")
+    private let bundledBinaryURLs = [
+        URL(fileURLWithPath: "/Applications/ChatGPT.app/Contents/Resources/codex"),
+        URL(fileURLWithPath: "/Applications/Codex.app/Contents/Resources/codex")
+    ]
 
     init(fileManager: FileManager = .default) {
         self.fileManager = fileManager
     }
 
-    /// Locates the codex binary by priority: CLI first, then Codex.app.
+    /// Locates the codex binary by priority: CLI first, then ChatGPT.app, then legacy Codex.app.
     func locate() -> URL {
         if let cliPath = findCLI() {
             debugLog("[Quota] found CLI codex at \(cliPath)")
             return cliPath
         }
 
-        if fileManager.isExecutableFile(atPath: codexAppBinaryURL.path) {
-            debugLog("[Quota] found Codex.app binary at \(codexAppBinaryURL.path)")
-            return codexAppBinaryURL
+        for binaryURL in bundledBinaryURLs where fileManager.isExecutableFile(atPath: binaryURL.path) {
+            debugLog("[Quota] found bundled codex at \(binaryURL.path)")
+            return binaryURL
         }
 
         debugLog("[Quota] no codex binary found")
-        return codexAppBinaryURL
+        return bundledBinaryURLs[0]
     }
 
     /// Locates the CLI path through the which command.

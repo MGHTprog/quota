@@ -11,19 +11,19 @@ Quota is a lightweight macOS menu bar app for monitoring [Codex](https://github.
 </p>
 
 > [!NOTE]
-> Quota requires Codex CLI or Codex.app, and your account must expose valid rate limit data.
+> Quota requires Codex CLI or ChatGPT.app, and your account must expose valid rate limit data.
 
 ## Features
 
 - Menu bar quota overview for Codex 5-hour and weekly limits, plus reset credits when available
-- Touch Bar display when Terminal, Codex, or IntelliJ IDEA is the active app
+- Touch Bar display when Terminal, ChatGPT, Codex, or IntelliJ IDEA is the active app
 - macOS notifications when quota is running low
 - Automatic refresh every 2 minutes, plus manual refresh
 - Proxy settings for Codex app-server connectivity
 - Global hotkey for opening the menu bar popover
 - Language switcher with System, English, and Simplified Chinese options
 - Accessory app mode: no Dock icon
-- Reads quota data through Codex `app-server`, preferring `codex` from `PATH` and falling back to `/Applications/Codex.app`
+- Reads quota data through Codex `app-server`, preferring `codex` from `PATH` and falling back to the copy bundled with ChatGPT.app, then legacy Codex.app
 
 ## Screenshots
 
@@ -67,7 +67,7 @@ After launch, Quota appears in the macOS menu bar. Wait a few seconds for the fi
 - Click `Settings` to configure proxy, global hotkey, and language options
 - Click `Quit` or press `⌘Q` to exit
 
-Touch Bar appears only when Terminal, Codex, or IntelliJ IDEA is the active app.
+Touch Bar appears only when Terminal, ChatGPT, Codex, or IntelliJ IDEA is the active app.
 
 ### Notification Thresholds
 
@@ -134,14 +134,14 @@ Proxy, hotkey, and language settings are stored locally by macOS app preferences
 ## Troubleshooting
 
 - No menu bar icon: launch `Quota.app` from `Applications` instead of running the raw `.build/release/Quota` executable.
-- No quota data: make sure Codex CLI or Codex.app is installed and signed in with an account that exposes rate limit data.
-- Codex cannot be found: ensure `codex` is available in `PATH`, or install `Codex.app` in `/Applications`.
+- No quota data: make sure Codex CLI or ChatGPT.app is installed and signed in with an account that exposes rate limit data.
+- Codex cannot be found: ensure `codex` is available in `PATH`, or install `ChatGPT.app` in `/Applications`.
 - No notifications: check macOS notification permissions for Quota in System Settings.
 
 ## Requirements
 
 - macOS 14 Sonoma or later
-- Codex CLI or Codex.app
+- Codex CLI or ChatGPT.app
 - A Codex account with rate limit data
 
 ## Development
