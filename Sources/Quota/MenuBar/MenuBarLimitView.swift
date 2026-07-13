@@ -4,8 +4,8 @@ final class MenuBarLimitView: NSView {
     private var model: String = "Codex"
     private var plan: String = ""
     private var resetCreditsAvailable: Int?
-    private var fiveHour = LimitWindowDisplay(kind: .fiveHour, usedPercent: 0, remainingPercent: 0, resetsAt: nil)
-    private var weekly = LimitWindowDisplay(kind: .weekly, usedPercent: 0, remainingPercent: 0, resetsAt: nil)
+    private var fiveHour = LimitWindowDisplay.unavailable(kind: .fiveHour)
+    private var weekly = LimitWindowDisplay.unavailable(kind: .weekly)
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -92,7 +92,7 @@ final class MenuBarLimitView: NSView {
         let remainText = L.remaining
         let maxPercentText = "100%"
         let clamped = min(max(data.remainingPercent, 0), 100)
-        let percentText = "\(Int(clamped.rounded()))%"
+        let percentText = data.isAvailable ? "\(Int(clamped.rounded()))%" : "--%"
         let remainSize = (remainText as NSString).size(withAttributes: remainAttr)
         let maxPercentSize = (maxPercentText as NSString).size(withAttributes: percentAttr)
 
@@ -110,7 +110,7 @@ final class MenuBarLimitView: NSView {
         bgPath.fill()
 
         // Bar fill
-        let fillW = barW * (clamped / 100)
+        let fillW = data.isAvailable ? barW * (clamped / 100) : 0
         if fillW > 0 {
             let fillRect = NSRect(x: barX, y: barY, width: fillW, height: barH)
             let fillPath = NSBezierPath(roundedRect: fillRect, xRadius: 2, yRadius: 2)
@@ -131,7 +131,8 @@ final class MenuBarLimitView: NSView {
             .font: NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .regular),
             .foregroundColor: NSColor.labelColor
         ]
-        data.resetText.draw(at: NSPoint(x: barX, y: barY - 16), withAttributes: resetAttr)
+        let resetText = data.isAvailable ? data.resetText : "\(L.reset) --"
+        resetText.draw(at: NSPoint(x: barX, y: barY - 16), withAttributes: resetAttr)
     }
 
     private func drawResetCreditsText(

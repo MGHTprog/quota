@@ -13,6 +13,7 @@ struct LimitWindowDisplay: Equatable {
     var usedPercent: Double
     var remainingPercent: Double
     var resetsAt: Date?
+    var isAvailable: Bool
 
     var title: String {
         switch kind {
@@ -38,6 +39,16 @@ struct LimitWindowDisplay: Equatable {
         formatter.dateFormat = "M/d HH:mm"
         return formatter
     }()
+
+    static func unavailable(kind: LimitWindowKind) -> LimitWindowDisplay {
+        LimitWindowDisplay(
+            kind: kind,
+            usedPercent: 0,
+            remainingPercent: 0,
+            resetsAt: nil,
+            isAvailable: false
+        )
+    }
 }
 
 enum LimitWindowKind: Equatable {
@@ -91,13 +102,19 @@ struct RateLimitResetCredits: Decodable, Equatable {
 
 extension GetAccountRateLimitsResponse {
     func displayState(now: Date = Date()) throws -> RateLimitDisplayState {
-        guard let primary = rateLimits.primary, let secondary = rateLimits.secondary else {
+        let windows = [rateLimits.primary, rateLimits.secondary].compactMap { $0 }
+        guard !windows.isEmpty else {
             throw CodexQuotaError.missingRateLimitWindow
         }
 
+        // The app-server can return only one window and does not guarantee that primary is 5h.
+        // Classify by duration: windows longer than one day are weekly; shorter windows are 5h.
+        let fiveHour = windows.first { ($0.windowDurationMins ?? 0) <= 24 * 60 }
+        let weekly = windows.first { ($0.windowDurationMins ?? 0) > 24 * 60 }
+
         return RateLimitDisplayState(
-            fiveHour: primary.display(kind: .fiveHour),
-            weekly: secondary.display(kind: .weekly),
+            fiveHour: fiveHour?.display(kind: .fiveHour) ?? .unavailable(kind: .fiveHour),
+            weekly: weekly?.display(kind: .weekly) ?? .unavailable(kind: .weekly),
             resetCreditsAvailable: rateLimitResetCredits?.availableCount,
             updatedAt: now,
             model: nil
@@ -112,7 +129,8 @@ private extension RateLimitWindow {
             kind: kind,
             usedPercent: used,
             remainingPercent: (100 - used).clamped(to: 0...100),
-            resetsAt: resetsAt.map(Date.init(timeIntervalSince1970:))
+            resetsAt: resetsAt.map(Date.init(timeIntervalSince1970:)),
+            isAvailable: true
         )
     }
 }

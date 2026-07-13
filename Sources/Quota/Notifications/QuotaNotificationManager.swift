@@ -102,22 +102,22 @@ final class QuotaNotificationManager: RateLimitServiceObserver {
     // MARK: - Notification Logic
 
     private func checkAndNotify(state: RateLimitDisplayState) {
-        let fiveRemaining = state.fiveHour.remainingPercent
-        let weeklyRemaining = state.weekly.remainingPercent
+        let fiveRemaining = state.fiveHour.isAvailable ? state.fiveHour.remainingPercent : nil
+        let weeklyRemaining = state.weekly.isAvailable ? state.weekly.remainingPercent : nil
 
-        debugLog("[Quota] checkAndNotify: 5h=\(Int(fiveRemaining))%, weekly=\(Int(weeklyRemaining))%, authorization=\(authorizationState)")
+        debugLog("[Quota] checkAndNotify: 5h=\(fiveRemaining.map { String(Int($0)) } ?? "--")%, weekly=\(weeklyRemaining.map { String(Int($0)) } ?? "--")%, authorization=\(authorizationState)")
 
         // Treat remaining quota above 50% as a new quota window.
-        if fiveRemaining > 50 {
+        if let fiveRemaining, fiveRemaining > 50 {
             fiveHourNotified = nil
         }
-        if weeklyRemaining > 50 {
+        if let weeklyRemaining, weeklyRemaining > 50 {
             weeklyNotified = nil
         }
 
         // Check whether new thresholds need notification.
-        let fiveCrossed = findNewCrossedThresholds(remaining: fiveRemaining, notified: fiveHourNotified)
-        let weeklyCrossed = findNewCrossedThresholds(remaining: weeklyRemaining, notified: weeklyNotified)
+        let fiveCrossed = fiveRemaining.map { findNewCrossedThresholds(remaining: $0, notified: fiveHourNotified) } ?? []
+        let weeklyCrossed = weeklyRemaining.map { findNewCrossedThresholds(remaining: $0, notified: weeklyNotified) } ?? []
 
         debugLog("[Quota] thresholds crossed: 5h=\(fiveCrossed), weekly=\(weeklyCrossed), 5hNotified=\(String(describing: fiveHourNotified)), weeklyNotified=\(String(describing: weeklyNotified))")
 
@@ -209,15 +209,22 @@ final class QuotaNotificationManager: RateLimitServiceObserver {
         fiveCrossed: [NotifyThreshold],
         weeklyCrossed: [NotifyThreshold]
     ) -> String {
-        let fivePercent = Int(state.fiveHour.remainingPercent.rounded())
-        let weeklyPercent = Int(state.weekly.remainingPercent.rounded())
         let fiveMarker = fiveCrossed.isEmpty ? "" : " ⚠️"
         let weeklyMarker = weeklyCrossed.isEmpty ? "" : " ⚠️"
         resetFormatter.locale = L.locale
         let fiveReset = state.fiveHour.resetsAt.map { "  \(L.reset) \(resetFormatter.string(from: $0))" } ?? ""
         let weeklyReset = state.weekly.resetsAt.map { "  \(L.reset) \(resetFormatter.string(from: $0))" } ?? ""
 
-        return "\(L.fiveHourTitle) \(fivePercent)%\(fiveMarker)\(fiveReset)\n\(L.weeklyTitle) \(weeklyPercent)%\(weeklyMarker)\(weeklyReset)"
+        var lines: [String] = []
+        if state.fiveHour.isAvailable {
+            let percent = Int(state.fiveHour.remainingPercent.rounded())
+            lines.append("\(L.fiveHourTitle) \(percent)%\(fiveMarker)\(fiveReset)")
+        }
+        if state.weekly.isAvailable {
+            let percent = Int(state.weekly.remainingPercent.rounded())
+            lines.append("\(L.weeklyTitle) \(percent)%\(weeklyMarker)\(weeklyReset)")
+        }
+        return lines.joined(separator: "\n")
     }
 
     // MARK: - Helpers

@@ -83,10 +83,10 @@ final class MenuBarController: NSObject, RateLimitServiceObserver {
 
     private func render(state: RateLimitDisplayState, error: Error?) {
         updateStatusLabel(
-            fiveHour: Int(state.fiveHour.remainingPercent.rounded()),
-            weekly: Int(state.weekly.remainingPercent.rounded())
+            fiveHour: state.fiveHour.isAvailable ? Int(state.fiveHour.remainingPercent.rounded()) : nil,
+            weekly: state.weekly.isAvailable ? Int(state.weekly.remainingPercent.rounded()) : nil
         )
-        debugLog("[Quota] status updated: fiveHour=\(Int(state.fiveHour.remainingPercent.rounded())) weekly=\(Int(state.weekly.remainingPercent.rounded()))")
+        debugLog("[Quota] status updated: fiveHour=\(state.fiveHour.isAvailable ? String(Int(state.fiveHour.remainingPercent.rounded())) : "--") weekly=\(state.weekly.isAvailable ? String(Int(state.weekly.remainingPercent.rounded())) : "--")")
 
         contentView.update(with: state)
 
