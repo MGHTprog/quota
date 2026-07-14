@@ -12,6 +12,7 @@ struct LimitWindowDisplay: Equatable {
     var usedPercent: Double
     var remainingPercent: Double
     var resetsAt: Date?
+    var isAvailable: Bool
 
     var title: String {
         switch kind {
@@ -37,6 +38,16 @@ struct LimitWindowDisplay: Equatable {
         formatter.dateFormat = "M/d HH:mm"
         return formatter
     }()
+
+    static func unavailable(kind: LimitWindowKind) -> LimitWindowDisplay {
+        LimitWindowDisplay(
+            kind: kind,
+            usedPercent: 0,
+            remainingPercent: 0,
+            resetsAt: nil,
+            isAvailable: false
+        )
+    }
 }
 
 enum LimitWindowKind: Equatable {
@@ -74,16 +85,46 @@ struct RateLimitResetCredits: Decodable, Equatable {
 
 extension GetAccountRateLimitsResponse {
     func displayState(now: Date = Date()) throws -> RateLimitDisplayState {
-        guard let primary = rateLimits.primary, let secondary = rateLimits.secondary else {
+        guard rateLimits.primary != nil || rateLimits.secondary != nil else {
             throw CodexQuotaError.missingRateLimitWindow
         }
 
+        var fiveHour: RateLimitWindow?
+        var weekly: RateLimitWindow?
+
+        classify(rateLimits.primary, fallbackKind: .fiveHour, fiveHour: &fiveHour, weekly: &weekly)
+        classify(rateLimits.secondary, fallbackKind: .weekly, fiveHour: &fiveHour, weekly: &weekly)
+
         return RateLimitDisplayState(
-            fiveHour: primary.display(kind: .fiveHour),
-            weekly: secondary.display(kind: .weekly),
+            fiveHour: fiveHour?.display(kind: .fiveHour) ?? .unavailable(kind: .fiveHour),
+            weekly: weekly?.display(kind: .weekly) ?? .unavailable(kind: .weekly),
             resetCreditsAvailable: rateLimitResetCredits?.availableCount,
             updatedAt: now
         )
+    }
+
+    private func classify(
+        _ window: RateLimitWindow?,
+        fallbackKind: LimitWindowKind,
+        fiveHour: inout RateLimitWindow?,
+        weekly: inout RateLimitWindow?
+    ) {
+        guard let window else { return }
+
+        let kind: LimitWindowKind
+        if let duration = window.windowDurationMins {
+            kind = duration > 24 * 60 ? .weekly : .fiveHour
+        } else {
+            // Preserve the legacy primary/secondary meaning only when duration metadata is absent.
+            kind = fallbackKind
+        }
+
+        switch kind {
+        case .fiveHour:
+            if fiveHour == nil { fiveHour = window }
+        case .weekly:
+            if weekly == nil { weekly = window }
+        }
     }
 }
 
@@ -94,7 +135,8 @@ private extension RateLimitWindow {
             kind: kind,
             usedPercent: used,
             remainingPercent: (100 - used).clamped(to: 0...100),
-            resetsAt: resetsAt.map(Date.init(timeIntervalSince1970:))
+            resetsAt: resetsAt.map(Date.init(timeIntervalSince1970:)),
+            isAvailable: true
         )
     }
 }
