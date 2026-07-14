@@ -81,31 +81,6 @@ final class CodexAppServerClient {
         }
     }
 
-    /// Reads the model from the most recently active persisted thread without resuming or mutating it.
-    /// Falls back to the effective Codex configuration when no persisted turn model is available.
-    func readCurrentModel(completion: @escaping (Result<String?, Error>) -> Void) {
-        queue.async {
-            let params: [String: Any] = [
-                "limit": 1,
-                "sortKey": "updated_at",
-                "sortDirection": "desc"
-            ]
-            self.requestOnQueue(method: "thread/list", params: params, as: ThreadListResponse.self) { result in
-                switch result {
-                case .success(let response):
-                    if let path = response.data.first?.path,
-                       let model = self.readLastModel(from: URL(fileURLWithPath: path)) {
-                        completion(.success(model))
-                    } else {
-                        self.readConfiguredModel(completion: completion)
-                    }
-                case .failure:
-                    self.readConfiguredModel(completion: completion)
-                }
-            }
-        }
-    }
-
     func stop(notifyPending: Bool = true) {
         queue.async {
             self.reconnectTimer?.cancel()
@@ -121,20 +96,19 @@ final class CodexAppServerClient {
         completion: @escaping (Result<T, Error>) -> Void
     ) {
         queue.async {
-            self.requestOnQueue(method: method, params: nil, as: responseType, completion: completion)
+            self.requestOnQueue(method: method, as: responseType, completion: completion)
         }
     }
 
     private func requestOnQueue<T: Decodable>(
         method: String,
-        params: [String: Any]? = nil,
         as responseType: T.Type,
         completion: @escaping (Result<T, Error>) -> Void
     ) {
         ensureStarted { result in
             switch result {
             case .success:
-                self.send(method: method, params: params) { result in
+                self.send(method: method, params: nil) { result in
                     switch result {
                     case .success(let value):
                         do {
@@ -151,45 +125,6 @@ final class CodexAppServerClient {
                 completion(.failure(error))
             }
         }
-    }
-
-    private func readConfiguredModel(completion: @escaping (Result<String?, Error>) -> Void) {
-        requestOnQueue(method: "config/read", params: [:], as: ConfigReadResponse.self) { result in
-            switch result {
-            case .success(let response):
-                completion(.success(response.config.model?.nonEmpty))
-            case .failure(let error):
-                completion(.failure(error))
-            }
-        }
-    }
-
-    /// Session logs can be large, so inspect only the tail where the newest turn contexts live.
-    private func readLastModel(from url: URL, tailByteCount: UInt64 = 256 * 1024) -> String? {
-        guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
-        defer { try? handle.close() }
-
-        guard let fileSize = try? handle.seekToEnd() else { return nil }
-        let offset = fileSize > tailByteCount ? fileSize - tailByteCount : 0
-        do {
-            try handle.seek(toOffset: offset)
-            let data = try handle.readToEnd() ?? Data()
-            guard let text = String(data: data, encoding: .utf8) else { return nil }
-
-            for line in text.split(separator: "\n").reversed() {
-                guard let lineData = line.data(using: .utf8),
-                      let object = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any],
-                      object["type"] as? String == "turn_context",
-                      let payload = object["payload"] as? [String: Any],
-                      let model = (payload["model"] as? String)?.nonEmpty else {
-                    continue
-                }
-                return model
-            }
-        } catch {
-            debugLog("[Quota] failed reading thread model: \(error.localizedDescription)")
-        }
-        return nil
     }
 
     private func teardownProcess(error: Error, notifyPending: Bool) {
@@ -466,12 +401,5 @@ final class CodexAppServerClient {
         let callbacks = pending.values
         pending.removeAll()
         callbacks.forEach { $0(.failure(error)) }
-    }
-}
-
-private extension String {
-    var nonEmpty: String? {
-        let value = trimmingCharacters(in: .whitespacesAndNewlines)
-        return value.isEmpty ? nil : value
     }
 }

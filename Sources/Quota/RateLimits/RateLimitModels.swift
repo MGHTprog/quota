@@ -5,7 +5,6 @@ struct RateLimitDisplayState: Equatable {
     var weekly: LimitWindowDisplay
     var resetCreditsAvailable: Int?
     var updatedAt: Date
-    var model: String?
 }
 
 struct LimitWindowDisplay: Equatable {
@@ -69,22 +68,6 @@ struct AccountInfo: Decodable {
     var planType: String?
 }
 
-struct ThreadListResponse: Decodable {
-    var data: [ThreadSummary]
-}
-
-struct ThreadSummary: Decodable {
-    var path: String?
-}
-
-struct ConfigReadResponse: Decodable {
-    var config: CodexConfig
-}
-
-struct CodexConfig: Decodable {
-    var model: String?
-}
-
 struct RateLimitSnapshot: Decodable {
     var primary: RateLimitWindow?
     var secondary: RateLimitWindow?
@@ -102,23 +85,46 @@ struct RateLimitResetCredits: Decodable, Equatable {
 
 extension GetAccountRateLimitsResponse {
     func displayState(now: Date = Date()) throws -> RateLimitDisplayState {
-        let windows = [rateLimits.primary, rateLimits.secondary].compactMap { $0 }
-        guard !windows.isEmpty else {
+        guard rateLimits.primary != nil || rateLimits.secondary != nil else {
             throw CodexQuotaError.missingRateLimitWindow
         }
 
-        // The app-server can return only one window and does not guarantee that primary is 5h.
-        // Classify by duration: windows longer than one day are weekly; shorter windows are 5h.
-        let fiveHour = windows.first { ($0.windowDurationMins ?? 0) <= 24 * 60 }
-        let weekly = windows.first { ($0.windowDurationMins ?? 0) > 24 * 60 }
+        var fiveHour: RateLimitWindow?
+        var weekly: RateLimitWindow?
+
+        classify(rateLimits.primary, fallbackKind: .fiveHour, fiveHour: &fiveHour, weekly: &weekly)
+        classify(rateLimits.secondary, fallbackKind: .weekly, fiveHour: &fiveHour, weekly: &weekly)
 
         return RateLimitDisplayState(
             fiveHour: fiveHour?.display(kind: .fiveHour) ?? .unavailable(kind: .fiveHour),
             weekly: weekly?.display(kind: .weekly) ?? .unavailable(kind: .weekly),
             resetCreditsAvailable: rateLimitResetCredits?.availableCount,
-            updatedAt: now,
-            model: nil
+            updatedAt: now
         )
+    }
+
+    private func classify(
+        _ window: RateLimitWindow?,
+        fallbackKind: LimitWindowKind,
+        fiveHour: inout RateLimitWindow?,
+        weekly: inout RateLimitWindow?
+    ) {
+        guard let window else { return }
+
+        let kind: LimitWindowKind
+        if let duration = window.windowDurationMins {
+            kind = duration > 24 * 60 ? .weekly : .fiveHour
+        } else {
+            // Preserve the legacy primary/secondary meaning only when duration metadata is absent.
+            kind = fallbackKind
+        }
+
+        switch kind {
+        case .fiveHour:
+            if fiveHour == nil { fiveHour = window }
+        case .weekly:
+            if weekly == nil { weekly = window }
+        }
     }
 }
 

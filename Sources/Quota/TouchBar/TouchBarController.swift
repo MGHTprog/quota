@@ -7,7 +7,6 @@ final class TouchBarController: NSObject, NSTouchBarDelegate, RateLimitServiceOb
     private let presentationPolicy: ActiveApplicationTouchBarPolicy
     private let presenter: SystemModalTouchBarPresenter
     private let contentView = TouchBarLimitView(frame: NSRect(x: 0, y: 0, width: 450, height: 26))
-    private var plan = ""
     private var activeApplicationObserver: NSObjectProtocol?
     private lazy var touchBar: NSTouchBar = {
         let touchBar = NSTouchBar()
@@ -37,8 +36,7 @@ final class TouchBarController: NSObject, NSTouchBarDelegate, RateLimitServiceOb
     }
 
     func applyPlan(_ plan: String) {
-        self.plan = plan
-        contentView.configureModel(service.state?.model ?? "Codex", plan: plan)
+        contentView.configureModel("Codex", plan: plan)
     }
 
     func reloadLocalizedText() {
@@ -55,7 +53,6 @@ final class TouchBarController: NSObject, NSTouchBarDelegate, RateLimitServiceOb
     }
 
     func rateLimitService(_ service: RateLimitService, didUpdate state: RateLimitDisplayState) {
-        contentView.configureModel(state.model ?? "Codex", plan: plan)
         contentView.update(with: state)
         debugLog("[Quota] Touch Bar updated")
         updatePresentation(for: currentActiveApplication())

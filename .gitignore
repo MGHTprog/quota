@@ -1,7 +1,5 @@
 # macOS
 .DS_Store
-*.app/
-Quota*.zip
 
 # Swift Package Manager
 .build/

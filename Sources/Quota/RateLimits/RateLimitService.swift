@@ -81,32 +81,15 @@ final class RateLimitService {
                 case .success(let response):
                     do {
                         let displayState = try response.displayState()
-                        self.finishRefresh(displayState)
+                        self.state = displayState
+                        debugLog("[Quota] rate limits updated")
+                        self.notifyUpdate(displayState)
                     } catch {
                         self.notifyFailure(error)
                     }
                 case .failure(let error):
                     self.notifyFailure(error)
                 }
-            }
-        }
-    }
-
-    private func finishRefresh(_ displayState: RateLimitDisplayState) {
-        client.readCurrentModel { [weak self] result in
-            DispatchQueue.main.async {
-                guard let self else { return }
-                var state = displayState
-                switch result {
-                case .success(let model):
-                    state.model = model ?? self.state?.model
-                case .failure(let error):
-                    state.model = self.state?.model
-                    debugLog("[Quota] model refresh failed: \(error.localizedDescription)")
-                }
-                self.state = state
-                debugLog("[Quota] rate limits updated, model=\(state.model ?? "Codex")")
-                self.notifyUpdate(state)
             }
         }
     }
