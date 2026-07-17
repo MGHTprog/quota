@@ -1,5 +1,6 @@
 import Foundation
 
+/// Minimal JSON tree used to decode heterogeneous JSON-RPC `result` payloads.
 enum JSONValue: Codable {
     case object([String: JSONValue])
     case array([JSONValue])

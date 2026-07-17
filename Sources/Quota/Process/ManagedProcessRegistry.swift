@@ -1,5 +1,6 @@
 import Foundation
 
+/// Persists the last Quota-owned `codex app-server` PID so orphaned children can be reaped.
 struct ManagedProcessRegistry {
     private let fileManager: FileManager
     private let recordURL: URL

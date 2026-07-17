@@ -1,6 +1,11 @@
 import Foundation
 
+/// JSON-RPC client over a local `codex app-server` stdio process.
+///
+/// Owns process lifecycle, initialize handshake, reconnect with backoff, and
+/// request/response correlation. Used only by `CodexProvider`.
 final class CodexAppServerClient {
+    /// JSON-RPC 2.0 response envelope from app-server stdout lines.
     private struct RPCResponse: Decodable {
         struct RPCError: Decodable {
             var message: String
@@ -16,6 +21,7 @@ final class CodexAppServerClient {
     private let proxyEnvironmentBuilder: ProxyEnvironmentBuilder
     private let managedProcessRegistry: ManagedProcessRegistry
     private let appMetadata: AppMetadata
+    private let requestTimeout: TimeInterval
     private let queue = DispatchQueue(label: "CodexAppServerClient")
     private let decoder = JSONDecoder()
 
@@ -26,6 +32,7 @@ final class CodexAppServerClient {
     private var buffer = Data()
     private var nextID = 1
     private var pending: [Int: (Result<JSONValue, Error>) -> Void] = [:]
+    private var requestTimeoutTimers: [Int: DispatchSourceTimer] = [:]
     private var initialized = false
     private var initializing = false
     private var initQueue: [(Result<Void, Error>) -> Void] = []
@@ -42,20 +49,24 @@ final class CodexAppServerClient {
         binaryLocator: CodexBinaryLocator = CodexBinaryLocator(),
         proxyEnvironmentBuilder: ProxyEnvironmentBuilder = ProxyEnvironmentBuilder(),
         managedProcessRegistry: ManagedProcessRegistry = ManagedProcessRegistry(),
-        appMetadata: AppMetadata = .current
+        appMetadata: AppMetadata = .current,
+        requestTimeout: TimeInterval = 20
     ) {
         self.proxySettingsStore = proxySettingsStore
         self.proxyEnvironmentBuilder = proxyEnvironmentBuilder
         self.managedProcessRegistry = managedProcessRegistry
         self.appMetadata = appMetadata
+        self.requestTimeout = requestTimeout
         self.codexURL = binaryLocator.locate()
     }
 
+    /// Reads account rate-limit windows (`account/rateLimits/read`).
     func readRateLimits(completion: @escaping (Result<GetAccountRateLimitsResponse, Error>) -> Void) {
         debugLog("[Quota] request account/rateLimits/read")
         request(method: "account/rateLimits/read", as: GetAccountRateLimitsResponse.self, completion: completion)
     }
 
+    /// Reads account metadata such as plan type (`account/read`). Results are cached in-process.
     func readAccount(completion: @escaping (Result<AccountInfo, Error>) -> Void) {
         debugLog("[Quota] request account/read")
         queue.async {
@@ -81,6 +92,8 @@ final class CodexAppServerClient {
         }
     }
 
+    /// Terminates the app-server child process.
+    /// - Parameter notifyPending: When `true`, in-flight RPC completions fail; when `false`, they are dropped (used on reconnect).
     func stop(notifyPending: Bool = true) {
         queue.async {
             self.reconnectTimer?.cancel()
@@ -142,6 +155,7 @@ final class CodexAppServerClient {
         stderr = nil
         buffer.removeAll(keepingCapacity: true)
         nextID = 1
+        cancelAllRequestTimeouts()
         initialized = false
         initializing = false
         cachedAccount = nil
@@ -344,6 +358,7 @@ final class CodexAppServerClient {
         let id = nextID
         nextID += 1
         pending[id] = completion
+        startRequestTimeout(for: id, method: method)
 
         let message: [String: Any] = [
             "jsonrpc": "2.0",
@@ -358,6 +373,7 @@ final class CodexAppServerClient {
             stdin.write(data)
         } catch {
             pending.removeValue(forKey: id)
+            cancelRequestTimeout(for: id)
             completion(.failure(error))
         }
     }
@@ -379,6 +395,7 @@ final class CodexAppServerClient {
             guard let id = response.id, let callback = pending.removeValue(forKey: id) else {
                 return
             }
+            cancelRequestTimeout(for: id)
 
             if let error = response.error {
                 callback(.failure(CodexQuotaError.rpcError(error.message)))
@@ -400,6 +417,38 @@ final class CodexAppServerClient {
     private func failPending(_ error: Error) {
         let callbacks = pending.values
         pending.removeAll()
+        cancelAllRequestTimeouts()
         callbacks.forEach { $0(.failure(error)) }
+    }
+
+    private func startRequestTimeout(for id: Int, method: String) {
+        cancelRequestTimeout(for: id)
+        let timer = DispatchSource.makeTimerSource(queue: queue)
+        timer.schedule(deadline: .now() + requestTimeout)
+        timer.setEventHandler { [weak self] in
+            guard let self else { return }
+            guard let callback = self.pending.removeValue(forKey: id) else { return }
+
+            self.requestTimeoutTimers[id] = nil
+            debugLog("[Quota] \(method) timed out after \(Int(self.requestTimeout))s")
+            callback(.failure(CodexQuotaError.requestTimedOut))
+
+            // A timed-out stdio RPC leaves request ordering uncertain; restart cleanly.
+            self.teardownProcess(error: CodexQuotaError.requestTimedOut, notifyPending: true)
+        }
+        timer.resume()
+        requestTimeoutTimers[id] = timer
+    }
+
+    private func cancelRequestTimeout(for id: Int) {
+        requestTimeoutTimers[id]?.cancel()
+        requestTimeoutTimers[id] = nil
+    }
+
+    private func cancelAllRequestTimeouts() {
+        for timer in requestTimeoutTimers.values {
+            timer.cancel()
+        }
+        requestTimeoutTimers.removeAll()
     }
 }

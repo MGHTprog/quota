@@ -1,5 +1,6 @@
 import Foundation
 
+/// App name/version from the main bundle, used when talking to provider CLIs.
 struct AppMetadata {
     var name: String
     var version: String

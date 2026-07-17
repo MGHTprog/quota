@@ -14,6 +14,7 @@
 "settings.tab.proxy" = "Proxy";
 "settings.tab.hotkey" = "Hotkey";
 "settings.tab.language" = "Language";
+"settings.tab.providers" = "Providers";
 "settings.button.save" = "Save";
 "settings.button.cancel" = "Cancel";
 "settings.app.version" = "Version %@";
@@ -38,6 +39,10 @@
 "settings.language.english" = "English";
 "settings.language.simplifiedChinese" = "Simplified Chinese";
 
+"settings.providers.subtitle" = "Choose which provider Quota shows in the menu bar";
+"settings.providers.selected" = "Show";
+"settings.providers.enabled" = "Enabled";
+
 "validation.proxy.title" = "Invalid proxy address";
 "validation.proxy.message" = "Enter a complete proxy URL, such as http://127.0.0.1:7890 or socks5://127.0.0.1:1080.";
 "validation.hotkey.title" = "Invalid hotkey";
@@ -51,10 +56,12 @@
 "error.codexBinaryMissing" = "Codex executable not found";
 "error.missingRateLimitWindow" = "Quota response is missing window data";
 "error.invalidResponse" = "Unable to parse Codex response";
+"error.requestTimedOut" = "Codex request timed out";
 
-"notification.lowQuota.fiveHour.title" = "%@ 5h quota %@";
-"notification.lowQuota.weekly.title" = "%@ Weekly quota %@";
-"notification.lowQuota.combined.title" = "%@ Quota %@";
 "notification.severity.warning" = "is low";
 "notification.severity.urgent" = "is urgent";
-"notification.severity.critical" = "is critically low";
+"notification.severity.critical" = "is nearly exhausted";
+
+"notification.lowQuota.title" = "%@ %@ %@";
+"notification.lowQuota.body" = "%d%% remaining";
+"notification.lowQuota.bodyWithReset" = "%d%% remaining · resets %@";

@@ -1,6 +1,8 @@
 import CFNetwork
 import Foundation
 
+/// Builds process environment variables for child CLIs from proxy settings
+/// (automatic system proxy, manual URL, or fully disabled).
 struct ProxyEnvironmentBuilder {
     private static let proxyEnvironmentKeys = [
         "HTTP_PROXY",
@@ -13,6 +15,7 @@ struct ProxyEnvironmentBuilder {
         "no_proxy"
     ]
 
+    /// Returns a copy of `baseEnvironment` with proxy-related keys applied or cleared.
     func build(configuration: ProxyConfiguration, baseEnvironment: [String: String]) -> [String: String] {
         var environment = baseEnvironment
         let proxyKeys = Self.proxyEnvironmentKeys

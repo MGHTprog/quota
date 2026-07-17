@@ -1,11 +1,28 @@
 import AppKit
 
+/// Custom-drawn two-row quota card shown inside the menu bar popover.
 final class MenuBarLimitView: NSView {
-    private var model: String = "Codex"
-    private var plan: String = ""
-    private var resetCreditsAvailable: Int?
-    private var fiveHour = LimitWindowDisplay.unavailable(kind: .fiveHour)
-    private var weekly = LimitWindowDisplay.unavailable(kind: .weekly)
+    private enum Layout {
+        static let width: CGFloat = 260
+        static let height: CGFloat = 105
+        static let padding: CGFloat = 14
+        static let headerYFromTop: CGFloat = 20
+        static let firstRowYFromTop: CGFloat = 44
+        static let secondRowYFromTop: CGFloat = 86
+        static let barHeight: CGFloat = 4
+        static let lowThreshold: Double = 20
+        static let midThreshold: Double = 45
+    }
+
+    static var preferredSize: NSSize {
+        NSSize(width: Layout.width, height: Layout.height)
+    }
+
+    private var displayName = ""
+    private var plan = ""
+    private var badges: [ProviderBadge] = []
+    /// Filled by `update(with:)`; empty rows until the first successful snapshot.
+    private var rows: [QuotaWindow] = [.empty, .empty]
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -16,19 +33,14 @@ final class MenuBarLimitView: NSView {
     }
 
     override var intrinsicContentSize: NSSize {
-        NSSize(width: 260, height: 105)
+        Self.preferredSize
     }
 
-    func update(with state: RateLimitDisplayState) {
-        fiveHour = state.fiveHour
-        weekly = state.weekly
-        resetCreditsAvailable = state.resetCreditsAvailable
-        needsDisplay = true
-    }
-
-    func configureModel(_ model: String, plan: String) {
-        self.model = model
-        self.plan = plan
+    func update(with state: ProviderQuotaState) {
+        displayName = state.identity.displayName
+        plan = state.identity.plan ?? ""
+        rows = state.windowsForCompactDisplay()
+        badges = state.badges
         needsDisplay = true
     }
 
@@ -37,12 +49,27 @@ final class MenuBarLimitView: NSView {
     }
 
     override func draw(_ dirtyRect: NSRect) {
-        let w = bounds.width
-        let pad: CGFloat = 14
-        let topSectionY: CGFloat = bounds.height - 44
-        let bottomSectionY: CGFloat = bounds.height - 86
+        let width = bounds.width
+        let pad = Layout.padding
+        let sectionYs: [CGFloat] = [
+            bounds.height - Layout.firstRowYFromTop,
+            bounds.height - Layout.secondRowYFromTop
+        ]
 
-        // Header
+        drawHeader(pad: pad, maxX: width - pad)
+
+        for (index, window) in rows.prefix(sectionYs.count).enumerated() {
+            drawSection(
+                window,
+                at: NSPoint(x: pad, y: sectionYs[index]),
+                width: width - pad * 2
+            )
+        }
+    }
+
+    // MARK: - Drawing
+
+    private func drawHeader(pad: CGFloat, maxX: CGFloat) {
         let headerAttr: [NSAttributedString.Key: Any] = [
             .font: NSFont.systemFont(ofSize: 12, weight: .bold),
             .foregroundColor: NSColor.labelColor
@@ -51,28 +78,27 @@ final class MenuBarLimitView: NSView {
             .font: NSFont.systemFont(ofSize: 12, weight: .bold),
             .foregroundColor: NSColor.systemBlue
         ]
-        let headerStr = NSMutableAttributedString(string: model, attributes: headerAttr)
+
+        let header = NSMutableAttributedString(string: displayName, attributes: headerAttr)
         if !plan.isEmpty {
-            headerStr.append(NSAttributedString(string: " \(plan)", attributes: planAttr))
+            header.append(NSAttributedString(string: " \(plan)", attributes: planAttr))
         }
-        let headerOrigin = NSPoint(x: pad, y: bounds.height - 20)
-        headerStr.draw(at: headerOrigin)
-        if let resetCreditsAvailable {
-            drawResetCreditsText(
-                text: L.resetCreditsSuffix(resetCreditsAvailable),
-                after: headerStr,
-                at: headerOrigin,
-                maxX: w - pad
+
+        let origin = NSPoint(x: pad, y: bounds.height - Layout.headerYFromTop)
+        header.draw(at: origin)
+
+        if let badge = badges.first {
+            drawBadgeText(
+                text: badge.text,
+                after: header,
+                at: origin,
+                maxX: maxX
             )
         }
-
-        // Sections
-        drawSection(fiveHour, at: NSPoint(x: pad, y: topSectionY), width: w - pad * 2)
-        drawSection(weekly, at: NSPoint(x: pad, y: bottomSectionY), width: w - pad * 2)
     }
 
-    private func drawSection(_ data: LimitWindowDisplay, at origin: NSPoint, width: CGFloat) {
-        let barH: CGFloat = 4
+    private func drawSection(_ data: QuotaWindow, at origin: NSPoint, width: CGFloat) {
+        let barHeight = Layout.barHeight
         let barX = origin.x
         let barY = origin.y
 
@@ -98,35 +124,29 @@ final class MenuBarLimitView: NSView {
 
         let barGap: CGFloat = 10
         let textGap: CGFloat = 4
-        let barW = max(0, width - barGap - remainSize.width - textGap - maxPercentSize.width)
+        let barWidth = max(0, width - barGap - remainSize.width - textGap - maxPercentSize.width)
 
-        // Title
         data.title.draw(at: NSPoint(x: barX, y: barY + 6), withAttributes: titleAttr)
 
-        // Bar background
-        let barRect = NSRect(x: barX, y: barY, width: barW, height: barH)
-        let bgPath = NSBezierPath(roundedRect: barRect, xRadius: 2, yRadius: 2)
+        let barRect = NSRect(x: barX, y: barY, width: barWidth, height: barHeight)
+        let background = NSBezierPath(roundedRect: barRect, xRadius: 2, yRadius: 2)
         NSColor.tertiaryLabelColor.setFill()
-        bgPath.fill()
+        background.fill()
 
-        // Bar fill
-        let fillW = data.isAvailable ? barW * (clamped / 100) : 0
-        if fillW > 0 {
-            let fillRect = NSRect(x: barX, y: barY, width: fillW, height: barH)
-            let fillPath = NSBezierPath(roundedRect: fillRect, xRadius: 2, yRadius: 2)
+        let fillWidth = data.isAvailable ? barWidth * (clamped / 100) : 0
+        if fillWidth > 0 {
+            let fillRect = NSRect(x: barX, y: barY, width: fillWidth, height: barHeight)
+            let fill = NSBezierPath(roundedRect: fillRect, xRadius: 2, yRadius: 2)
             barColor(for: clamped).setFill()
-            fillPath.fill()
+            fill.fill()
         }
 
-        // Remaining label
-        let remainX = barX + barW + barGap
+        let remainX = barX + barWidth + barGap
         remainText.draw(at: NSPoint(x: remainX, y: barY - 2), withAttributes: remainAttr)
 
-        // Percentage
         let percentX = remainX + remainSize.width + textGap
         percentText.draw(at: NSPoint(x: percentX, y: barY - 2), withAttributes: percentAttr)
 
-        // Reset time
         let resetAttr: [NSAttributedString.Key: Any] = [
             .font: NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .regular),
             .foregroundColor: NSColor.labelColor
@@ -135,7 +155,7 @@ final class MenuBarLimitView: NSView {
         resetText.draw(at: NSPoint(x: barX, y: barY - 16), withAttributes: resetAttr)
     }
 
-    private func drawResetCreditsText(
+    private func drawBadgeText(
         text: String,
         after header: NSAttributedString,
         at origin: NSPoint,
@@ -146,21 +166,19 @@ final class MenuBarLimitView: NSView {
             .foregroundColor: NSColor.labelColor.withAlphaComponent(0.82)
         ]
         let textSize = (text as NSString).size(withAttributes: textAttr)
-        let headerWidth = header.size().width
-        let textX = origin.x + headerWidth + 8
+        let textX = origin.x + header.size().width + 8
         guard textX + textSize.width <= maxX else { return }
 
-        let textOrigin = NSPoint(
-            x: textX,
-            y: origin.y + 1
+        text.draw(
+            at: NSPoint(x: textX, y: origin.y + 1),
+            withAttributes: textAttr
         )
-        text.draw(at: textOrigin, withAttributes: textAttr)
     }
 
     private func barColor(for percent: Double) -> NSColor {
         switch percent {
-        case 0..<20: return .systemRed
-        case 20..<45: return .systemOrange
+        case ..<Layout.lowThreshold: return .systemRed
+        case ..<Layout.midThreshold: return .systemOrange
         default: return .systemGreen
         }
     }

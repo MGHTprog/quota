@@ -1,8 +1,11 @@
 import AppKit
 
+/// Shows a system-modal Touch Bar quota strip when an allowed app is frontmost.
+///
+/// Observes the primary provider only (same single-slot policy as the menu bar).
 @MainActor
-final class TouchBarController: NSObject, NSTouchBarDelegate, RateLimitServiceObserver {
-    private let service: RateLimitService
+final class TouchBarController: NSObject, NSTouchBarDelegate, QuotaServiceObserver {
+    private let service: QuotaService
     private let workspace: NSWorkspace
     private let presentationPolicy: ActiveApplicationTouchBarPolicy
     private let presenter: SystemModalTouchBarPresenter
@@ -14,11 +17,11 @@ final class TouchBarController: NSObject, NSTouchBarDelegate, RateLimitServiceOb
         touchBar.defaultItemIdentifiers = [Self.itemIdentifier]
         return touchBar
     }()
-    private static let itemIdentifier = NSTouchBarItem.Identifier("com.openai.codex.touchbar.quota")
-    private static let trayIdentifier = "com.openai.codex.touchbar.quota.tray"
+    private static let itemIdentifier = NSTouchBarItem.Identifier("app.quota.touchbar.item")
+    private static let trayIdentifier = "app.quota.touchbar.tray"
 
     init(
-        service: RateLimitService,
+        service: QuotaService,
         workspace: NSWorkspace = .shared,
         presentationPolicy: ActiveApplicationTouchBarPolicy = ActiveApplicationTouchBarPolicy(),
         presenter: SystemModalTouchBarPresenter? = nil
@@ -35,10 +38,6 @@ final class TouchBarController: NSObject, NSTouchBarDelegate, RateLimitServiceOb
         service.addObserver(self)
     }
 
-    func applyPlan(_ plan: String) {
-        contentView.configureModel("Codex", plan: plan)
-    }
-
     func reloadLocalizedText() {
         contentView.reloadLocalizedText()
     }
@@ -52,13 +51,20 @@ final class TouchBarController: NSObject, NSTouchBarDelegate, RateLimitServiceOb
         return item
     }
 
-    func rateLimitService(_ service: RateLimitService, didUpdate state: RateLimitDisplayState) {
+    func quotaService(_ service: QuotaService, didUpdate state: ProviderQuotaState) {
+        guard state.providerID == service.primaryProviderID else { return }
         contentView.update(with: state)
         debugLog("[Quota] Touch Bar updated")
         updatePresentation(for: currentActiveApplication())
     }
 
-    func rateLimitService(_ service: RateLimitService, didFail error: Error, lastState: RateLimitDisplayState?) {
+    func quotaService(
+        _ service: QuotaService,
+        didFail error: Error,
+        providerID: ProviderID,
+        lastState: ProviderQuotaState?
+    ) {
+        guard providerID == service.primaryProviderID else { return }
         if let lastState {
             contentView.update(with: lastState)
         }

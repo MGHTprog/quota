@@ -1,5 +1,6 @@
 import Foundation
 
+/// Typed accessors for localized UI strings (wraps `LocalizationManager`).
 enum L {
     static var locale: Locale {
         LocalizationManager.shared.locale
@@ -21,6 +22,7 @@ enum L {
     static var proxy: String { tr(.proxy) }
     static var hotkey: String { tr(.hotkey) }
     static var languageTitle: String { tr(.language) }
+    static var providers: String { tr(.providers) }
     static var save: String { tr(.save) }
     static var cancel: String { tr(.cancel) }
     static func appVersion(_ version: String) -> String { tr(.appVersion, version) }
@@ -38,6 +40,9 @@ enum L {
     static var clickToRecordHotkey: String { tr(.clickToRecordHotkey) }
 
     static var languageSubtitle: String { tr(.languageSubtitle) }
+    static var providersSubtitle: String { tr(.providersSubtitle) }
+    static var selectedProvider: String { tr(.selectedProvider) }
+    static var enabledProviders: String { tr(.enabledProviders) }
 
     static var invalidProxyTitle: String { tr(.invalidProxyTitle) }
     static var invalidProxyMessage: String { tr(.invalidProxyMessage) }
@@ -52,6 +57,7 @@ enum L {
     static var codexBinaryMissing: String { tr(.codexBinaryMissing) }
     static var missingRateLimitWindow: String { tr(.missingRateLimitWindow) }
     static var invalidResponse: String { tr(.invalidResponse) }
+    static var requestTimedOut: String { tr(.requestTimedOut) }
 
     static func proxyModeTitle(_ mode: ProxyMode) -> String {
         switch mode {
@@ -75,14 +81,19 @@ enum L {
         }
     }
 
-    static func lowQuotaTitle(fiveCrossed: Bool, weeklyCrossed: Bool, severity: String, emoji: String) -> String {
-        if fiveCrossed && !weeklyCrossed {
-            return tr(.lowQuotaFiveHourTitle, emoji, severity)
-        }
-        if weeklyCrossed && !fiveCrossed {
-            return tr(.lowQuotaWeeklyTitle, emoji, severity)
-        }
-        return tr(.lowQuotaCombinedTitle, emoji, severity)
+    /// e.g. "Codex 周限额不足"
+    static func lowQuotaTitle(providerName: String, windowTitle: String, severity: String) -> String {
+        tr(.lowQuotaTitle, providerName, windowTitle, severity)
+    }
+
+    /// e.g. "剩余 18%"
+    static func lowQuotaBody(remainingPercent: Int) -> String {
+        tr(.lowQuotaBody, remainingPercent)
+    }
+
+    /// e.g. "剩余 18%，3/20 14:00 重置"
+    static func lowQuotaBody(remainingPercent: Int, resetText: String) -> String {
+        tr(.lowQuotaBodyWithReset, remainingPercent, resetText)
     }
 
     static var severityWarning: String { tr(.severityWarning) }

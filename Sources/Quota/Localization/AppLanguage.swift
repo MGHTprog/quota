@@ -1,5 +1,6 @@
 import Foundation
 
+/// Concrete UI languages shipped with the app.
 enum AppLanguage: String, CaseIterable, Equatable {
     case english = "en"
     case simplifiedChinese = "zh-hans"
@@ -14,6 +15,7 @@ enum AppLanguage: String, CaseIterable, Equatable {
     }
 }
 
+/// User-facing language setting, including “follow system”.
 enum AppLanguagePreference: String, CaseIterable, Equatable {
     case system
     case english = "en"
@@ -36,6 +38,7 @@ enum AppLanguagePreference: String, CaseIterable, Equatable {
     }
 }
 
+/// Persists the user's language preference in `UserDefaults`.
 final class LanguageSettingsStore {
     static let shared = LanguageSettingsStore()
 

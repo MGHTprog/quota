@@ -1,10 +1,10 @@
 import AppKit
 
+/// Compact two-row quota meter embedded in the Touch Bar item.
 final class TouchBarLimitView: NSView {
     private let stack = NSStackView()
-    private let fiveHourRow = LimitRowView()
-    private let weeklyRow = LimitRowView()
-    private var state: RateLimitDisplayState?
+    private let rowViews = [LimitRowView(), LimitRowView()]
+    private var state: ProviderQuotaState?
 
     override var intrinsicContentSize: NSSize {
         NSSize(width: 450, height: 26)
@@ -20,15 +20,35 @@ final class TouchBarLimitView: NSView {
         setup()
     }
 
-    func update(with state: RateLimitDisplayState) {
+    func update(with state: ProviderQuotaState) {
         self.state = state
-        fiveHourRow.update(with: state.fiveHour)
-        weeklyRow.update(with: state.weekly)
+        let rows = state.windowsForCompactDisplay()
+
+        for (index, rowView) in rowViews.enumerated() {
+            let window = rows[index]
+            if index == 0 {
+                rowView.configureModel(
+                    text: state.identity.displayName,
+                    color: .labelColor,
+                    fontSize: 8
+                )
+            } else {
+                rowView.configureModel(
+                    text: state.identity.plan ?? "",
+                    color: .systemBlue,
+                    fontSize: 7
+                )
+            }
+            rowView.update(with: window)
+        }
     }
 
-    func configureModel(_ model: String, plan: String) {
-        fiveHourRow.configureModel(text: model, color: .labelColor, fontSize: 8)
-        weeklyRow.configureModel(text: plan, color: .systemBlue, fontSize: 7)
+    func reloadLocalizedText() {
+        if let state {
+            update(with: state)
+        } else {
+            rowViews.forEach { $0.showPlaceholder(title: "--") }
+        }
     }
 
     private func setup() {
@@ -41,8 +61,7 @@ final class TouchBarLimitView: NSView {
         stack.distribution = .fillEqually
         stack.spacing = 0
         stack.translatesAutoresizingMaskIntoConstraints = false
-        stack.addArrangedSubview(fiveHourRow)
-        stack.addArrangedSubview(weeklyRow)
+        rowViews.forEach { stack.addArrangedSubview($0) }
         addSubview(stack)
 
         NSLayoutConstraint.activate([
@@ -52,16 +71,9 @@ final class TouchBarLimitView: NSView {
             stack.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
     }
-
-    func reloadLocalizedText() {
-        if let state {
-            update(with: state)
-        } else {
-            fiveHourRow.showPlaceholder(title: L.fiveHourTitle)
-            weeklyRow.showPlaceholder(title: L.weeklyTitle)
-        }
-    }
 }
+
+// MARK: - Row
 
 private final class LimitRowView: NSView {
     private let modelLabel = NSTextField(labelWithString: "")
@@ -85,7 +97,7 @@ private final class LimitRowView: NSView {
         setup()
     }
 
-    func update(with window: LimitWindowDisplay) {
+    func update(with window: QuotaWindow) {
         guard window.isAvailable else {
             showPlaceholder(title: window.title)
             return
@@ -149,9 +161,9 @@ private final class LimitRowView: NSView {
         spacer.translatesAutoresizingMaskIntoConstraints = false
         spacer.widthAnchor.constraint(equalToConstant: 32).isActive = true
 
-        for v in [spacer, modelLabel, titleLabel, segmentStack, rightStack] {
-            v.translatesAutoresizingMaskIntoConstraints = false
-            addSubview(v)
+        for view in [spacer, modelLabel, titleLabel, segmentStack, rightStack] {
+            view.translatesAutoresizingMaskIntoConstraints = false
+            addSubview(view)
         }
 
         NSLayoutConstraint.activate([
@@ -172,21 +184,20 @@ private final class LimitRowView: NSView {
 
             segmentStack.leadingAnchor.constraint(equalTo: titleLabel.trailingAnchor, constant: 4),
             segmentStack.trailingAnchor.constraint(equalTo: rightStack.leadingAnchor, constant: -4),
-            segmentStack.centerYAnchor.constraint(equalTo: centerYAnchor),
+            segmentStack.centerYAnchor.constraint(equalTo: centerYAnchor)
         ])
     }
 
     private func color(for remainingPercent: Double) -> NSColor {
         switch remainingPercent {
-        case 0..<20:
-            return .systemRed
-        case 20..<45:
-            return .systemOrange
-        default:
-            return .systemGreen
+        case 0..<20: return .systemRed
+        case 20..<45: return .systemOrange
+        default: return .systemGreen
         }
     }
 }
+
+// MARK: - Segment
 
 private final class SegmentView: NSView {
     var isFilled = false {

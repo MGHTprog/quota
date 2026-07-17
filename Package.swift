@@ -17,6 +17,11 @@ let package = Package(
             resources: [
                 .process("Resources")
             ]
+        ),
+        .testTarget(
+            name: "QuotaTests",
+            dependencies: ["Quota"],
+            path: "Tests/QuotaTests"
         )
     ]
 )

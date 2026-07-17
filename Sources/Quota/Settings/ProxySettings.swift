@@ -1,16 +1,19 @@
 import Foundation
 
+/// How child processes should inherit HTTP(S) proxy environment variables.
 enum ProxyMode: String, CaseIterable {
     case automatic
     case manual
     case disabled
 }
 
+/// User-selected proxy mode and optional manual proxy URL.
 struct ProxyConfiguration: Equatable {
     var mode: ProxyMode
     var proxyURL: String
 }
 
+/// Persists proxy settings in `UserDefaults`.
 final class ProxySettingsStore {
     static let shared = ProxySettingsStore()
 

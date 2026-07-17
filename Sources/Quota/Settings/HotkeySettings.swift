@@ -4,6 +4,7 @@ import Carbon.HIToolbox
 
 // MARK: - HotkeyConfiguration
 
+/// Global hotkey binding (Carbon key code + modifiers) plus enable flag.
 struct HotkeyConfiguration: Equatable {
     var keyCode: UInt32
     var modifiers: UInt32
@@ -22,6 +23,7 @@ struct HotkeyConfiguration: Equatable {
 
 // MARK: - HotkeySettingsStore
 
+/// Persists the menu-open global hotkey in `UserDefaults`.
 final class HotkeySettingsStore {
     static let shared = HotkeySettingsStore()
 

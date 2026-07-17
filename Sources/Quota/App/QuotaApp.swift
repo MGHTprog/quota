@@ -1,5 +1,6 @@
 import AppKit
 
+/// Process entry point. Runs as a menu-bar accessory app (no Dock icon).
 @main
 struct QuotaApp {
     @MainActor

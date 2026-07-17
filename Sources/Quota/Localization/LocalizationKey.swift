@@ -1,3 +1,4 @@
+/// Keys into `Localizable.strings` (en / zh-Hans).
 enum LocalizationKey: String {
     case settings = "settings.title"
     case refresh = "menu.refresh"
@@ -15,6 +16,7 @@ enum LocalizationKey: String {
     case proxy = "settings.tab.proxy"
     case hotkey = "settings.tab.hotkey"
     case language = "settings.tab.language"
+    case providers = "settings.tab.providers"
     case save = "settings.button.save"
     case cancel = "settings.button.cancel"
     case appVersion = "settings.app.version"
@@ -39,6 +41,10 @@ enum LocalizationKey: String {
     case languagePreferenceEnglish = "settings.language.english"
     case languagePreferenceSimplifiedChinese = "settings.language.simplifiedChinese"
 
+    case providersSubtitle = "settings.providers.subtitle"
+    case selectedProvider = "settings.providers.selected"
+    case enabledProviders = "settings.providers.enabled"
+
     case invalidProxyTitle = "validation.proxy.title"
     case invalidProxyMessage = "validation.proxy.message"
     case invalidHotkeyTitle = "validation.hotkey.title"
@@ -52,11 +58,13 @@ enum LocalizationKey: String {
     case codexBinaryMissing = "error.codexBinaryMissing"
     case missingRateLimitWindow = "error.missingRateLimitWindow"
     case invalidResponse = "error.invalidResponse"
+    case requestTimedOut = "error.requestTimedOut"
 
-    case lowQuotaFiveHourTitle = "notification.lowQuota.fiveHour.title"
-    case lowQuotaWeeklyTitle = "notification.lowQuota.weekly.title"
-    case lowQuotaCombinedTitle = "notification.lowQuota.combined.title"
     case severityWarning = "notification.severity.warning"
     case severityUrgent = "notification.severity.urgent"
     case severityCritical = "notification.severity.critical"
+
+    case lowQuotaTitle = "notification.lowQuota.title"
+    case lowQuotaBody = "notification.lowQuota.body"
+    case lowQuotaBodyWithReset = "notification.lowQuota.bodyWithReset"
 }

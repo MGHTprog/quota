@@ -1,31 +1,42 @@
 import AppKit
 import UserNotifications
 
+/// Application composition root: wires providers, quota refresh, menu bar, Touch Bar,
+/// notifications, hotkeys, and settings.
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
     private let proxySettingsStore = ProxySettingsStore.shared
     private let hotkeySettingsStore = HotkeySettingsStore.shared
     private let languageSettingsStore = LanguageSettingsStore.shared
+    private let providerSettingsStore = ProviderSettingsStore.shared
     private var currentProxyConfiguration = ProxySettingsStore.shared.configuration
     private var currentHotkeyConfiguration = HotkeySettingsStore.shared.configuration
-    private lazy var client = CodexAppServerClient(proxySettingsStore: proxySettingsStore)
-    private lazy var rateLimitService = RateLimitService(client: client)
+    private var currentProviderConfiguration = ProviderSettingsStore.shared.configuration
+
+    private lazy var registry = ProviderRegistry.makeDefault(proxySettingsStore: proxySettingsStore)
+    private lazy var quotaService = QuotaService(
+        registry: registry,
+        providerSettingsStore: providerSettingsStore
+    )
     private lazy var settingsWindowController = SettingsWindowController(
         proxyStore: proxySettingsStore,
         hotkeyStore: hotkeySettingsStore,
-        languageStore: languageSettingsStore
-    ) { [weak self] proxyConfig, hotkeyConfig, languagePreference in
+        languageStore: languageSettingsStore,
+        providerStore: providerSettingsStore,
+        providerOptions: registry.settingsOptions
+    ) { [weak self] proxyConfig, hotkeyConfig, languagePreference, providerConfig in
         self?.settingsDidSave(
             proxyConfig: proxyConfig,
             hotkeyConfig: hotkeyConfig,
-            languagePreference: languagePreference
+            languagePreference: languagePreference,
+            providerConfig: providerConfig
         )
     }
-    private lazy var menuBarController = MenuBarController(service: rateLimitService) { [weak self] in
+    private lazy var menuBarController = MenuBarController(service: quotaService) { [weak self] in
         self?.showSettings()
     }
     private let hotkeyManager = GlobalHotkeyManager()
-    private lazy var touchBarController = TouchBarController(service: rateLimitService)
+    private lazy var touchBarController = TouchBarController(service: quotaService)
     private lazy var notificationManager = QuotaNotificationManager()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -34,23 +45,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         setupNotifications()
         menuBarController.start()
         touchBarController.start()
-        rateLimitService.start()
-        loadAccountMetadata()
+        quotaService.start()
         updateHotkeyRegistration(with: currentHotkeyConfiguration)
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         debugLog("[Quota] terminating")
         hotkeyManager.unregister()
-        rateLimitService.stop()
-        client.stop()
+        quotaService.stop()
     }
 
     private func setupNotifications() {
         if Bundle.main.bundleURL.pathExtension == "app" {
             UNUserNotificationCenter.current().delegate = self
         }
-        rateLimitService.addObserver(notificationManager)
+        quotaService.addObserver(notificationManager)
     }
 
     private func configureApplicationIcon() {
@@ -88,13 +97,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private func settingsDidSave(
         proxyConfig: ProxyConfiguration,
         hotkeyConfig: HotkeyConfiguration,
-        languagePreference: AppLanguagePreference
+        languagePreference: AppLanguagePreference,
+        providerConfig: ProviderSettingsConfiguration
     ) {
+        // Language is already persisted by SettingsWindowController before this callback.
+        _ = languagePreference
+
         let proxyChanged = proxyConfig != currentProxyConfiguration
         let hotkeyChanged = hotkeyConfig != currentHotkeyConfiguration
+        let providerChanged = providerConfig != currentProviderConfiguration
 
         currentProxyConfiguration = proxyConfig
         currentHotkeyConfiguration = hotkeyConfig
+        currentProviderConfiguration = providerConfig
 
         if proxyChanged {
             proxySettingsDidChange()
@@ -102,6 +117,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
         if hotkeyChanged {
             updateHotkeyRegistration(with: hotkeyConfig)
+        }
+
+        if providerChanged {
+            quotaService.refreshAll()
         }
 
         reloadLocalizedText()
@@ -112,26 +131,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         touchBarController.reloadLocalizedText()
     }
 
-    private func loadAccountMetadata() {
-        client.readAccount { [weak self] result in
-            DispatchQueue.main.async {
-                guard let self else { return }
-
-                switch result {
-                case .success(let account):
-                    guard let plan = account.planType else { return }
-                    self.menuBarController.applyPlan(plan)
-                    self.touchBarController.applyPlan(plan)
-                case .failure(let error):
-                    debugLog("[Quota] account metadata load failed: \(error.localizedDescription)")
-                }
-            }
-        }
-    }
-
     private func proxySettingsDidChange() {
-        client.stop(notifyPending: false)      // Stop the old process.
-        loadAccountMetadata()                   // Read account metadata; ensureStarted starts a new process.
-        rateLimitService.reconnectAndRefresh()  // Refresh quota; ensureStarted prevents duplicate starts.
+        // Drop live CLI connections so the next fetch picks up new proxy env.
+        quotaService.reconnectAndRefresh()
     }
 }

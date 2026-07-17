@@ -42,21 +42,23 @@ private enum NotificationAuthorizationState {
     case denied
 }
 
+/// Notification held until authorization is granted (or delivered immediately when allowed).
 private struct PendingNotification {
     var content: UNMutableNotificationContent
-    var fiveCrossed: [NotifyThreshold]
-    var weeklyCrossed: [NotifyThreshold]
+    var providerID: ProviderID
+    /// Window id → newly crossed thresholds for this delivery.
+    var crossedByWindow: [String: [NotifyThreshold]]
 }
 
 // MARK: - QuotaNotificationManager
 
-/// Low-quota notification manager.
+/// Sends macOS notifications when remaining quota crosses severity thresholds.
 ///
-/// Observes quota changes and sends one combined notification when either window
-/// crosses a threshold. Each threshold is notified once per window and resets
-/// after quota recovery.
+/// - Thresholds: 20% (warning), 10% (urgent), 5% (critical).
+/// - Each threshold fires once per `(provider, window)` until remaining rises above 50%.
+/// - Titles/bodies are provider-agnostic (`ProviderQuotaState` only).
 @MainActor
-final class QuotaNotificationManager: RateLimitServiceObserver {
+final class QuotaNotificationManager: QuotaServiceObserver {
     /// Whether the app is running inside a .app bundle required by UNUserNotificationCenter.
     private let available: Bool
     private let center: UNUserNotificationCenter?
@@ -65,9 +67,8 @@ final class QuotaNotificationManager: RateLimitServiceObserver {
     private var pendingNotification: PendingNotification?
     private var hasPromptedEnableNotifications = false
 
-    /// Highest notified threshold per quota window.
-    private var fiveHourNotified: NotifyThreshold?
-    private var weeklyNotified: NotifyThreshold?
+    /// Highest notified threshold per provider → window id.
+    private var notifiedByProvider: [ProviderID: [String: NotifyThreshold]] = [:]
 
     private let resetFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -88,64 +89,70 @@ final class QuotaNotificationManager: RateLimitServiceObserver {
         }
     }
 
-    // MARK: - RateLimitServiceObserver
+    // MARK: - QuotaServiceObserver
 
-    func rateLimitService(_ service: RateLimitService, didUpdate state: RateLimitDisplayState) {
-        debugLog("[Quota] notification manager received update")
+    func quotaService(_ service: QuotaService, didUpdate state: ProviderQuotaState) {
+        debugLog("[Quota] notification manager received update for \(state.providerID.rawValue)")
         checkAndNotify(state: state)
     }
 
-    func rateLimitService(_ service: RateLimitService, didFail error: Error, lastState: RateLimitDisplayState?) {
+    func quotaService(
+        _ service: QuotaService,
+        didFail error: Error,
+        providerID: ProviderID,
+        lastState: ProviderQuotaState?
+    ) {
         // Ignore failures here and wait for the next refresh.
     }
 
     // MARK: - Notification Logic
 
-    private func checkAndNotify(state: RateLimitDisplayState) {
-        let fiveRemaining = state.fiveHour.isAvailable ? state.fiveHour.remainingPercent : nil
-        let weeklyRemaining = state.weekly.isAvailable ? state.weekly.remainingPercent : nil
+    private func checkAndNotify(state: ProviderQuotaState) {
+        var notified = notifiedByProvider[state.providerID] ?? [:]
+        var crossedByWindow: [String: [NotifyThreshold]] = [:]
 
-        debugLog("[Quota] checkAndNotify: 5h=\(fiveRemaining.map { String(Int($0)) } ?? "--")%, weekly=\(weeklyRemaining.map { String(Int($0)) } ?? "--")%, authorization=\(authorizationState)")
+        for window in state.windows where window.isAvailable {
+            let remaining = window.remainingPercent
+            // Above 50% remaining: treat as a fresh quota cycle and allow re-alerts later.
+            if remaining > 50 {
+                notified[window.id] = nil
+            }
 
-        // Treat remaining quota above 50% as a new quota window.
-        if let fiveRemaining, fiveRemaining > 50 {
-            fiveHourNotified = nil
+            let crossed = findNewCrossedThresholds(remaining: remaining, notified: notified[window.id])
+            if !crossed.isEmpty {
+                crossedByWindow[window.id] = crossed
+            }
         }
-        if let weeklyRemaining, weeklyRemaining > 50 {
-            weeklyNotified = nil
-        }
 
-        // Check whether new thresholds need notification.
-        let fiveCrossed = fiveRemaining.map { findNewCrossedThresholds(remaining: $0, notified: fiveHourNotified) } ?? []
-        let weeklyCrossed = weeklyRemaining.map { findNewCrossedThresholds(remaining: $0, notified: weeklyNotified) } ?? []
+        notifiedByProvider[state.providerID] = notified
 
-        debugLog("[Quota] thresholds crossed: 5h=\(fiveCrossed), weekly=\(weeklyCrossed), 5hNotified=\(String(describing: fiveHourNotified)), weeklyNotified=\(String(describing: weeklyNotified))")
+        debugLog(
+            "[Quota] checkAndNotify \(state.providerID.rawValue): windows=\(state.windows.map { "\($0.id)=\($0.isAvailable ? String(Int($0.remainingPercent)) : "--")" }), crossed=\(crossedByWindow.keys.sorted())"
+        )
 
-        guard !fiveCrossed.isEmpty || !weeklyCrossed.isEmpty else {
+        guard !crossedByWindow.isEmpty else {
             debugLog("[Quota] no new thresholds crossed, skip notification")
             return
         }
 
-        // Use the most severe threshold crossed by either window.
-        let maxThreshold = max(
-            fiveCrossed.max() ?? .warning,
-            weeklyCrossed.max() ?? .warning
-        )
+        // One notification, focused on the single most urgent window (keeps title + body to two lines).
+        guard let focus = mostUrgentCrossing(in: state, crossedByWindow: crossedByWindow) else {
+            return
+        }
 
-        // Build and send one combined notification.
         let content = buildNotificationContent(
-            state: state,
-            fiveCrossed: fiveCrossed,
-            weeklyCrossed: weeklyCrossed,
-            severity: maxThreshold
+            providerName: state.identity.displayName,
+            window: focus.window,
+            severity: focus.severity
         )
         let pending = PendingNotification(
             content: content,
-            fiveCrossed: fiveCrossed,
-            weeklyCrossed: weeklyCrossed
+            providerID: state.providerID,
+            // Remember every window that crossed so we don't fire again for the quieter one.
+            crossedByWindow: crossedByWindow
         )
 
-        debugLog("[Quota] scheduling notification: title=\(content.title)")
+        debugLog("[Quota] scheduling notification: title=\(content.title) focus=\(focus.window.id)")
         scheduleNotification(pending) { [weak self] delivered in
             guard let self, delivered else { return }
             self.markDelivered(pending)
@@ -159,72 +166,62 @@ final class QuotaNotificationManager: RateLimitServiceObserver {
         }
     }
 
+    /// Picks the window that needs attention most:
+    /// 1) highest severity tier crossed, 2) lowest remaining %, 3) earlier in `state.windows`.
+    private func mostUrgentCrossing(
+        in state: ProviderQuotaState,
+        crossedByWindow: [String: [NotifyThreshold]]
+    ) -> (window: QuotaWindow, severity: NotifyThreshold)? {
+        var best: (window: QuotaWindow, severity: NotifyThreshold)?
+
+        for window in state.windows {
+            guard let crossed = crossedByWindow[window.id], let severity = crossed.max() else {
+                continue
+            }
+            guard let current = best else {
+                best = (window, severity)
+                continue
+            }
+            if severity > current.severity {
+                best = (window, severity)
+            } else if severity == current.severity,
+                      window.remainingPercent < current.window.remainingPercent {
+                best = (window, severity)
+            }
+        }
+
+        return best
+    }
+
     // MARK: - Notification Content
 
     private func buildNotificationContent(
-        state: RateLimitDisplayState,
-        fiveCrossed: [NotifyThreshold],
-        weeklyCrossed: [NotifyThreshold],
+        providerName: String,
+        window: QuotaWindow,
         severity: NotifyThreshold
     ) -> UNMutableNotificationContent {
         let content = UNMutableNotificationContent()
+        let percent = Int(window.remainingPercent.rounded())
 
-        // Title highlights the most urgent quota window.
-        content.title = buildTitle(
-            fiveCrossed: fiveCrossed,
-            weeklyCrossed: weeklyCrossed,
-            severity: severity
+        content.title = L.lowQuotaTitle(
+            providerName: providerName,
+            windowTitle: window.title,
+            severity: severityLabel(severity)
         )
 
-        // Body includes detailed status for both quota windows.
-        content.body = buildBody(
-            state: state,
-            fiveCrossed: fiveCrossed,
-            weeklyCrossed: weeklyCrossed
-        )
+        if let resetsAt = window.resetsAt {
+            resetFormatter.locale = L.locale
+            let resetText = resetFormatter.string(from: resetsAt)
+            content.body = L.lowQuotaBody(remainingPercent: percent, resetText: resetText)
+        } else {
+            content.body = L.lowQuotaBody(remainingPercent: percent)
+        }
 
-        // Alert-style notifications need a sound to pop up.
         if severity.usesAlert {
             content.sound = .default
         }
 
         return content
-    }
-
-    private func buildTitle(
-        fiveCrossed: [NotifyThreshold],
-        weeklyCrossed: [NotifyThreshold],
-        severity: NotifyThreshold
-    ) -> String {
-        L.lowQuotaTitle(
-            fiveCrossed: !fiveCrossed.isEmpty,
-            weeklyCrossed: !weeklyCrossed.isEmpty,
-            severity: severityLabel(severity),
-            emoji: severity.emoji
-        )
-    }
-
-    private func buildBody(
-        state: RateLimitDisplayState,
-        fiveCrossed: [NotifyThreshold],
-        weeklyCrossed: [NotifyThreshold]
-    ) -> String {
-        let fiveMarker = fiveCrossed.isEmpty ? "" : " ⚠️"
-        let weeklyMarker = weeklyCrossed.isEmpty ? "" : " ⚠️"
-        resetFormatter.locale = L.locale
-        let fiveReset = state.fiveHour.resetsAt.map { "  \(L.reset) \(resetFormatter.string(from: $0))" } ?? ""
-        let weeklyReset = state.weekly.resetsAt.map { "  \(L.reset) \(resetFormatter.string(from: $0))" } ?? ""
-
-        var lines: [String] = []
-        if state.fiveHour.isAvailable {
-            let percent = Int(state.fiveHour.remainingPercent.rounded())
-            lines.append("\(L.fiveHourTitle) \(percent)%\(fiveMarker)\(fiveReset)")
-        }
-        if state.weekly.isAvailable {
-            let percent = Int(state.weekly.remainingPercent.rounded())
-            lines.append("\(L.weeklyTitle) \(percent)%\(weeklyMarker)\(weeklyReset)")
-        }
-        return lines.joined(separator: "\n")
     }
 
     // MARK: - Helpers
@@ -242,57 +239,28 @@ final class QuotaNotificationManager: RateLimitServiceObserver {
 
     // MARK: - Delivery
 
+    /// Delivers via the system notification center when allowed.
+    ///
+    /// Permission flow (same as typical macOS apps):
+    /// - `.notDetermined` → system Allow / Don't Allow prompt (`requestAuthorization`)
+    /// - `.authorized` → top-right banner via `UNUserNotificationCenter`
+    /// - `.denied` → only then show a one-time alert guiding the user to System Settings
+    ///   (macOS will not show the system permission sheet again after denial)
     private func scheduleNotification(
         _ pending: PendingNotification,
         completion: @escaping (Bool) -> Void
     ) {
-        let content = pending.content
-
-        if let center, authorizationState == .authorized {
-            debugLog("[Quota] sending via UNUserNotificationCenter...")
-            let request = UNNotificationRequest(
-                identifier: "quota-low-\(UUID().uuidString)",
-                content: content,
-                trigger: nil
-            )
-
-            center.add(request) { error in
-                Task { @MainActor in
-                    if let error {
-                        debugLog("[Quota] notification delivery error: \(error.localizedDescription)")
-                        completion(false)
-                    } else {
-                        debugLog("[Quota] notification delivered successfully")
-                        completion(true)
-                    }
-                }
-            }
-        } else if available && authorizationState == .pending {
-            debugLog("[Quota] notification authorization pending, defer delivery")
-            pendingNotification = pending
-            completion(false)
-        } else if available {
-            debugLog("[Quota] notification not authorized, rechecking system settings")
-            recheckAuthorizationAndSchedule(pending, completion: completion)
-        } else {
+        guard available, let center else {
             debugLog("[Quota] ── notification preview ──")
-            debugLog("[Quota] title: \(content.title)")
-            debugLog("[Quota] body: \(content.body)")
+            debugLog("[Quota] title: \(pending.content.title)")
+            debugLog("[Quota] body: \(pending.content.body)")
             debugLog("[Quota] ────────────")
             completion(true)
-        }
-    }
-
-    private func recheckAuthorizationAndSchedule(
-        _ pending: PendingNotification,
-        completion: @escaping (Bool) -> Void
-    ) {
-        guard let center else {
-            promptEnableNotificationsIfNeeded()
-            completion(false)
             return
         }
 
+        // Always re-read system status so we never skip the system permission sheet
+        // by relying on a stale in-memory state.
         center.getNotificationSettings { [weak self] settings in
             DispatchQueue.main.async {
                 guard let self else {
@@ -300,112 +268,149 @@ final class QuotaNotificationManager: RateLimitServiceObserver {
                     return
                 }
 
-                self.authorizationState = Self.authorizationState(from: settings.authorizationStatus)
-                debugLog("[Quota] notification authorization recheck: \(settings.authorizationStatus)")
+                debugLog("[Quota] notification auth status: \(settings.authorizationStatus.rawValue)")
 
-                if self.authorizationState == .authorized {
-                    self.scheduleNotification(pending, completion: completion)
-                } else {
-                    self.promptEnableNotificationsIfNeeded()
+                switch settings.authorizationStatus {
+                case .authorized, .provisional, .ephemeral:
+                    self.authorizationState = .authorized
+                    self.postToNotificationCenter(pending.content, completion: completion)
+
+                case .notDetermined:
+                    // System "Allow notifications?" prompt — not our custom center alert.
+                    self.authorizationState = .pending
+                    self.pendingNotification = pending
+                    self.requestSystemAuthorization()
+                    completion(false)
+
+                case .denied:
+                    self.authorizationState = .denied
+                    // System will not re-prompt; guide user to Settings once.
+                    self.promptOpenNotificationSettingsIfNeeded()
+                    completion(false)
+
+                @unknown default:
+                    self.authorizationState = .denied
+                    self.promptOpenNotificationSettingsIfNeeded()
                     completion(false)
                 }
             }
         }
     }
 
-    private func deliverPendingNotificationIfNeeded() {
-        guard let pendingNotification else { return }
+    private func postToNotificationCenter(
+        _ content: UNMutableNotificationContent,
+        completion: @escaping (Bool) -> Void
+    ) {
+        guard let center else {
+            completion(false)
+            return
+        }
 
-        self.pendingNotification = nil
-        debugLog("[Quota] delivering deferred notification: title=\(pendingNotification.content.title)")
-        scheduleNotification(pendingNotification) { [weak self] delivered in
+        debugLog("[Quota] sending via UNUserNotificationCenter...")
+        let request = UNNotificationRequest(
+            identifier: "quota-low-\(UUID().uuidString)",
+            content: content,
+            trigger: nil
+        )
+
+        center.add(request) { error in
+            Task { @MainActor in
+                if let error {
+                    debugLog("[Quota] notification delivery error: \(error.localizedDescription)")
+                    completion(false)
+                } else {
+                    debugLog("[Quota] notification delivered successfully")
+                    completion(true)
+                }
+            }
+        }
+    }
+
+    private func deliverPendingNotificationIfNeeded() {
+        guard let pending = pendingNotification else { return }
+
+        pendingNotification = nil
+        debugLog("[Quota] delivering deferred notification: title=\(pending.content.title)")
+        scheduleNotification(pending) { [weak self] delivered in
             guard let self, delivered else { return }
-            self.markDelivered(pendingNotification)
+            self.markDelivered(pending)
         }
     }
 
     private func markDelivered(_ pending: PendingNotification) {
-        if let highest = pending.fiveCrossed.max() {
-            fiveHourNotified = highest
+        var notified = notifiedByProvider[pending.providerID] ?? [:]
+        for (windowID, thresholds) in pending.crossedByWindow {
+            if let highest = thresholds.max() {
+                notified[windowID] = highest
+            }
         }
-        if let highest = pending.weeklyCrossed.max() {
-            weeklyNotified = highest
-        }
+        notifiedByProvider[pending.providerID] = notified
     }
 
-    private static func authorizationState(from status: UNAuthorizationStatus) -> NotificationAuthorizationState {
-        switch status {
-        case .authorized, .provisional, .ephemeral:
-            return .authorized
-        case .denied:
-            return .denied
-        case .notDetermined:
-            return .pending
-        @unknown default:
-            return .denied
-        }
-    }
-
+    /// Called on launch to warm authorization (system prompt if still undetermined).
     private func requestAuthorization() {
         guard let center else { return }
 
-        // Check current authorization first; denied apps cannot show the system prompt again.
         center.getNotificationSettings { [weak self] settings in
-            guard let self else { return }
+            DispatchQueue.main.async {
+                guard let self else { return }
 
-            switch settings.authorizationStatus {
-            case .authorized, .provisional, .ephemeral:
-                DispatchQueue.main.async {
-                    self.authorizationState = Self.authorizationState(from: settings.authorizationStatus)
+                switch settings.authorizationStatus {
+                case .authorized, .provisional, .ephemeral:
+                    self.authorizationState = .authorized
                     self.deliverPendingNotificationIfNeeded()
-                }
-            case .denied:
-                DispatchQueue.main.async {
-                    self.authorizationState = Self.authorizationState(from: settings.authorizationStatus)
-                }
-            case .notDetermined:
-                center.requestAuthorization(options: [.alert, .sound]) { [weak self] granted, error in
-                    DispatchQueue.main.async {
-                        guard let self else { return }
-
-                        if let error {
-                            debugLog("[Quota] notification authorization error: \(error.localizedDescription)")
-                        }
-
-                        self.authorizationState = granted ? .authorized : .denied
-                        debugLog("[Quota] notification authorization: \(granted ? "granted" : "denied")")
-
-                        if granted {
-                            self.deliverPendingNotificationIfNeeded()
-                        }
-                    }
-                }
-            @unknown default:
-                DispatchQueue.main.async {
+                case .denied:
+                    self.authorizationState = .denied
+                case .notDetermined:
+                    self.authorizationState = .pending
+                    self.requestSystemAuthorization()
+                @unknown default:
                     self.authorizationState = .denied
                 }
             }
         }
     }
 
-    private func promptEnableNotificationsIfNeeded() {
-        guard !hasPromptedEnableNotifications else { return }
-        hasPromptedEnableNotifications = true
-        promptEnableNotifications()
+    /// Shows the standard system permission UI (Allow / Don't Allow).
+    private func requestSystemAuthorization() {
+        guard let center else { return }
+
+        center.requestAuthorization(options: [.alert, .sound, .badge]) { [weak self] granted, error in
+            DispatchQueue.main.async {
+                guard let self else { return }
+
+                if let error {
+                    debugLog("[Quota] notification authorization error: \(error.localizedDescription)")
+                }
+
+                self.authorizationState = granted ? .authorized : .denied
+                debugLog("[Quota] notification authorization: \(granted ? "granted" : "denied")")
+
+                if granted {
+                    self.deliverPendingNotificationIfNeeded()
+                }
+            }
+        }
     }
 
-    /// Prompts the user to enable notification permission.
-    private func promptEnableNotifications() {
+    /// Only used after the user has already denied system permission.
+    private func promptOpenNotificationSettingsIfNeeded() {
+        guard !hasPromptedEnableNotifications else { return }
+        hasPromptedEnableNotifications = true
+
         let alert = NSAlert()
         alert.messageText = L.notificationPermissionTitle
         alert.informativeText = L.notificationPermissionMessage
-        alert.alertStyle = .warning
+        alert.alertStyle = .informational
         alert.addButton(withTitle: L.openSystemSettings)
         alert.addButton(withTitle: L.later)
 
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
-            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.notifications") {
+            // Prefer Notifications pane deep link when available.
+            if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension") {
+                NSWorkspace.shared.open(url)
+            } else if let url = URL(string: "x-apple.systempreferences:com.apple.preference.notifications") {
                 NSWorkspace.shared.open(url)
             }
         }

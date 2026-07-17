@@ -1,5 +1,6 @@
 import Foundation
 
+/// Resolves `LocalizationKey` values for the user's language preference.
 final class LocalizationManager {
     static let shared = LocalizationManager()
 

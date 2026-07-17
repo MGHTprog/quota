@@ -14,6 +14,7 @@
 "settings.tab.proxy" = "代理";
 "settings.tab.hotkey" = "快捷键";
 "settings.tab.language" = "语言";
+"settings.tab.providers" = "服务";
 "settings.button.save" = "保存";
 "settings.button.cancel" = "取消";
 "settings.app.version" = "版本 %@";
@@ -38,6 +39,10 @@
 "settings.language.english" = "English";
 "settings.language.simplifiedChinese" = "简体中文";
 
+"settings.providers.subtitle" = "选择菜单栏中展示哪个服务";
+"settings.providers.selected" = "展示";
+"settings.providers.enabled" = "启用";
+
 "validation.proxy.title" = "代理地址无效";
 "validation.proxy.message" = "请输入完整的代理地址，例如 http://127.0.0.1:7890 或 socks5://127.0.0.1:1080。";
 "validation.hotkey.title" = "快捷键无效";
@@ -51,10 +56,12 @@
 "error.codexBinaryMissing" = "未找到 Codex 可执行文件";
 "error.missingRateLimitWindow" = "额度响应缺少窗口数据";
 "error.invalidResponse" = "无法解析 Codex 响应";
+"error.requestTimedOut" = "Codex 请求超时";
 
-"notification.lowQuota.fiveHour.title" = "%@ 5小时额度%@！";
-"notification.lowQuota.weekly.title" = "%@ 周限额%@！";
-"notification.lowQuota.combined.title" = "%@ 额度%@！";
-"notification.severity.warning" = "偏低";
-"notification.severity.urgent" = "紧急";
-"notification.severity.critical" = "严重不足";
+"notification.severity.warning" = "不足";
+"notification.severity.urgent" = "告急";
+"notification.severity.critical" = "即将用尽";
+
+"notification.lowQuota.title" = "%@ %@%@";
+"notification.lowQuota.body" = "剩余 %d%%";
+"notification.lowQuota.bodyWithReset" = "剩余 %d%%，%@ 重置";

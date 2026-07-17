@@ -1,0 +1,72 @@
+import Foundation
+
+/// Owns the list of available providers and is the single composition root.
+///
+/// ## Adding a provider
+/// Implement `QuotaProvider`, then append an instance in `makeDefault(...)`.
+/// Keep MenuBar / Touch Bar / notifications on `ProviderQuotaState` only so they
+/// do not need edits for each new model.
+final class ProviderRegistry {
+    private(set) var providers: [any QuotaProvider]
+
+    init(providers: [any QuotaProvider]) {
+        self.providers = providers
+    }
+
+    var enabledProviders: [any QuotaProvider] {
+        providers.filter(\.isEnabled)
+    }
+
+    var providerIDs: [ProviderID] {
+        providers.map(\.id)
+    }
+
+    var settingsOptions: [ProviderSettingsOption] {
+        providers.map { ProviderSettingsOption(id: $0.id, displayName: $0.displayName) }
+    }
+
+    func enabledProviders(configuration: ProviderSettingsConfiguration) -> [any QuotaProvider] {
+        providers.filter { provider in
+            provider.isEnabled && configuration.isEnabled(provider.id)
+        }
+    }
+
+    func primaryProvider(configuration: ProviderSettingsConfiguration) -> (any QuotaProvider)? {
+        if let selectedProviderID = configuration.selectedProviderID,
+           configuration.isEnabled(selectedProviderID),
+           let provider = provider(id: selectedProviderID),
+           provider.isEnabled {
+            return provider
+        }
+
+        return enabledProviders(configuration: configuration).first
+    }
+
+    func provider(id: ProviderID) -> (any QuotaProvider)? {
+        providers.first { $0.id == id }
+    }
+
+    func invalidateAllConnections() {
+        for provider in providers {
+            provider.invalidateConnection()
+        }
+    }
+
+    func stopAll() {
+        for provider in providers {
+            provider.stop()
+        }
+    }
+
+    /// App wiring. Register new providers here only.
+    static func makeDefault(
+        proxySettingsStore: ProxySettingsStore = .shared,
+        appMetadata: AppMetadata = .current
+    ) -> ProviderRegistry {
+        let codex = CodexProvider(
+            proxySettingsStore: proxySettingsStore,
+            appMetadata: appMetadata
+        )
+        return ProviderRegistry(providers: [codex])
+    }
+}

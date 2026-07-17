@@ -1,5 +1,8 @@
 import AppKit
 
+/// Presents/dismisses a system-modal `NSTouchBar` via private AppKit selectors.
+///
+/// Failures are non-fatal: older macOS builds without the selector simply skip presentation.
 @MainActor
 final class SystemModalTouchBarPresenter {
     private let trayIdentifier: String

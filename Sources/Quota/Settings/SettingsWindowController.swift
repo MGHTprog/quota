@@ -13,22 +13,39 @@ private enum Layout {
 
 // MARK: - SettingsWindowController
 
+/// Settings window host for proxy, hotkey, and language tabs.
 final class SettingsWindowController: NSWindowController {
     private let proxyStore: ProxySettingsStore
     private let hotkeyStore: HotkeySettingsStore
     private let languageStore: LanguageSettingsStore
-    private let onSave: (ProxyConfiguration, HotkeyConfiguration, AppLanguagePreference) -> Void
+    private let providerStore: ProviderSettingsStore
+    private let providerOptions: [ProviderSettingsOption]
+    private let onSave: (
+        ProxyConfiguration,
+        HotkeyConfiguration,
+        AppLanguagePreference,
+        ProviderSettingsConfiguration
+    ) -> Void
     private let rootViewController: SettingsViewController
 
     init(
         proxyStore: ProxySettingsStore,
         hotkeyStore: HotkeySettingsStore,
         languageStore: LanguageSettingsStore,
-        onSave: @escaping (ProxyConfiguration, HotkeyConfiguration, AppLanguagePreference) -> Void
+        providerStore: ProviderSettingsStore,
+        providerOptions: [ProviderSettingsOption],
+        onSave: @escaping (
+            ProxyConfiguration,
+            HotkeyConfiguration,
+            AppLanguagePreference,
+            ProviderSettingsConfiguration
+        ) -> Void
     ) {
         self.proxyStore = proxyStore
         self.hotkeyStore = hotkeyStore
         self.languageStore = languageStore
+        self.providerStore = providerStore
+        self.providerOptions = providerOptions
         self.onSave = onSave
         self.rootViewController = SettingsViewController()
 
@@ -49,12 +66,15 @@ final class SettingsWindowController: NSWindowController {
             proxyConfiguration: proxyStore.configuration,
             hotkeyConfiguration: hotkeyStore.configuration,
             languagePreference: languageStore.preference,
-            onSave: { [weak self] proxyConfig, hotkeyConfig, languagePreference in
+            providerConfiguration: providerStore.configuration,
+            providerOptions: providerOptions,
+            onSave: { [weak self] proxyConfig, hotkeyConfig, languagePreference, providerConfiguration in
                 guard let self else { return }
                 self.proxyStore.configuration = proxyConfig
                 self.hotkeyStore.configuration = hotkeyConfig
                 self.languageStore.preference = languagePreference
-                self.onSave(proxyConfig, hotkeyConfig, languagePreference)
+                self.providerStore.configuration = providerConfiguration
+                self.onSave(proxyConfig, hotkeyConfig, languagePreference, providerConfiguration)
             },
             onCancel: { [weak self] in
                 self?.window?.close()
@@ -71,7 +91,9 @@ final class SettingsWindowController: NSWindowController {
         rootViewController.reload(
             proxyConfiguration: proxyStore.configuration,
             hotkeyConfiguration: hotkeyStore.configuration,
-            languagePreference: languageStore.preference
+            languagePreference: languageStore.preference,
+            providerConfiguration: providerStore.configuration,
+            providerOptions: providerOptions
         )
         window?.title = L.settings
         showWindow(nil)
@@ -82,12 +104,14 @@ final class SettingsWindowController: NSWindowController {
 
 // MARK: - SettingsViewController
 
+/// Tabbed content controller for proxy / hotkey / language preferences.
 private final class SettingsViewController: NSViewController {
     // Tab
-    private let tabControl = NSSegmentedControl(labels: ["", "", ""], trackingMode: .selectOne, target: nil, action: nil)
+    private let tabControl = NSSegmentedControl(labels: ["", "", "", ""], trackingMode: .selectOne, target: nil, action: nil)
     private let proxyContainer = NSView()
     private let hotkeyContainer = NSView()
     private let languageContainer = NSView()
+    private let providersContainer = NSView()
     // Proxy
     private let modeControl = NSSegmentedControl(labels: ["", "", ""], trackingMode: .selectOne, target: nil, action: nil)
     private let proxyURLField = NSTextField(string: "")
@@ -104,16 +128,29 @@ private final class SettingsViewController: NSViewController {
     private let languagePopUp = NSPopUpButton(frame: .zero, pullsDown: false)
     private let languageSubtitleLabel = NSTextField(labelWithString: "")
     private let languageLabel = NSTextField(labelWithString: "")
+    // Providers
+    private let providersSubtitleLabel = NSTextField(labelWithString: "")
+    private let selectedProviderLabel = NSTextField(labelWithString: "")
+    private let providerEnableLabel = NSTextField(labelWithString: "")
+    private let selectedProviderPopUp = NSPopUpButton(frame: .zero, pullsDown: false)
+    private let providerCheckboxStack = NSStackView()
     // Buttons
     private let versionLabel = NSTextField(labelWithString: "")
     private let saveButton = NSButton(title: "", target: nil, action: nil)
     private let cancelButton = NSButton(title: "", target: nil, action: nil)
 
-    private var onSave: ((ProxyConfiguration, HotkeyConfiguration, AppLanguagePreference) -> Void)?
+    private var onSave: ((
+        ProxyConfiguration,
+        HotkeyConfiguration,
+        AppLanguagePreference,
+        ProviderSettingsConfiguration
+    ) -> Void)?
     private var onCancel: (() -> Void)?
 
     private var pendingHotkeyCode: UInt32 = 0
     private var pendingHotkeyModifiers: UInt32 = 0
+    private var providerOptions: [ProviderSettingsOption] = []
+    private var providerCheckboxes: [ProviderID: NSButton] = [:]
 
     override func loadView() {
         view = NSView(frame: NSRect(x: 0, y: 0, width: Layout.windowWidth, height: Layout.windowHeight))
@@ -124,23 +161,36 @@ private final class SettingsViewController: NSViewController {
         proxyConfiguration: ProxyConfiguration,
         hotkeyConfiguration: HotkeyConfiguration,
         languagePreference: AppLanguagePreference,
-        onSave: @escaping (ProxyConfiguration, HotkeyConfiguration, AppLanguagePreference) -> Void,
+        providerConfiguration: ProviderSettingsConfiguration,
+        providerOptions: [ProviderSettingsOption],
+        onSave: @escaping (
+            ProxyConfiguration,
+            HotkeyConfiguration,
+            AppLanguagePreference,
+            ProviderSettingsConfiguration
+        ) -> Void,
         onCancel: @escaping () -> Void
     ) {
+        self.providerOptions = providerOptions
         self.onSave = onSave
         self.onCancel = onCancel
         reload(
             proxyConfiguration: proxyConfiguration,
             hotkeyConfiguration: hotkeyConfiguration,
-            languagePreference: languagePreference
+            languagePreference: languagePreference,
+            providerConfiguration: providerConfiguration,
+            providerOptions: providerOptions
         )
     }
 
     func reload(
         proxyConfiguration: ProxyConfiguration,
         hotkeyConfiguration: HotkeyConfiguration,
-        languagePreference: AppLanguagePreference
+        languagePreference: AppLanguagePreference,
+        providerConfiguration: ProviderSettingsConfiguration,
+        providerOptions: [ProviderSettingsOption]
     ) {
+        self.providerOptions = providerOptions
         guard isViewLoaded else { return }
         selectLanguagePreference(languagePreference)
 
@@ -153,6 +203,8 @@ private final class SettingsViewController: NSViewController {
         pendingHotkeyModifiers = hotkeyConfiguration.modifiers
         hotkeyToggle.state = hotkeyConfiguration.isEnabled ? .on : .off
         keyRecorder.configure(displayString: hotkeyConfiguration.displayString)
+
+        reloadProviderControls(configuration: providerConfiguration)
     }
 
     // MARK: - UI Construction
@@ -176,6 +228,11 @@ private final class SettingsViewController: NSViewController {
         setupLanguageTab()
         languageContainer.translatesAutoresizingMaskIntoConstraints = false
         languageContainer.isHidden = true
+
+        // ── Providers tab content ──
+        setupProvidersTab()
+        providersContainer.translatesAutoresizingMaskIntoConstraints = false
+        providersContainer.isHidden = true
 
         // ── Button row ──
         versionLabel.font = .systemFont(ofSize: 11, weight: .regular)
@@ -201,7 +258,9 @@ private final class SettingsViewController: NSViewController {
         buttonRow.alignment = .centerY
 
         // ── Root layout ──
-        let rootStack = NSStackView(views: [tabControl, proxyContainer, hotkeyContainer, languageContainer, buttonRow])
+        let rootStack = NSStackView(
+            views: [tabControl, proxyContainer, hotkeyContainer, languageContainer, providersContainer, buttonRow]
+        )
         rootStack.orientation = .vertical
         rootStack.alignment = .leading
         rootStack.spacing = Layout.sectionSpacing
@@ -226,6 +285,8 @@ private final class SettingsViewController: NSViewController {
             hotkeyContainer.trailingAnchor.constraint(equalTo: rootStack.trailingAnchor, constant: -Layout.padding),
             languageContainer.leadingAnchor.constraint(equalTo: rootStack.leadingAnchor, constant: Layout.padding),
             languageContainer.trailingAnchor.constraint(equalTo: rootStack.trailingAnchor, constant: -Layout.padding),
+            providersContainer.leadingAnchor.constraint(equalTo: rootStack.leadingAnchor, constant: Layout.padding),
+            providersContainer.trailingAnchor.constraint(equalTo: rootStack.trailingAnchor, constant: -Layout.padding),
             tabControl.leadingAnchor.constraint(equalTo: rootStack.leadingAnchor, constant: Layout.padding),
         ])
 
@@ -327,6 +388,38 @@ private final class SettingsViewController: NSViewController {
         ])
     }
 
+    private func setupProvidersTab() {
+        providersSubtitleLabel.font = .systemFont(ofSize: 13, weight: .regular)
+        providersSubtitleLabel.textColor = .secondaryLabelColor
+
+        configureLabel(selectedProviderLabel)
+        selectedProviderPopUp.translatesAutoresizingMaskIntoConstraints = false
+        selectedProviderPopUp.target = self
+        selectedProviderPopUp.action = #selector(selectedProviderChanged)
+        let selectedProviderRow = makeRow(label: selectedProviderLabel, control: selectedProviderPopUp)
+
+        configureLabel(providerEnableLabel)
+        providerCheckboxStack.orientation = .vertical
+        providerCheckboxStack.alignment = .leading
+        providerCheckboxStack.spacing = 6
+        let enabledRow = makeRow(label: providerEnableLabel, control: providerCheckboxStack)
+
+        let stack = NSStackView(views: [providersSubtitleLabel, selectedProviderRow, enabledRow])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = Layout.sectionSpacing
+        stack.translatesAutoresizingMaskIntoConstraints = false
+
+        providersContainer.addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: providersContainer.topAnchor),
+            stack.leadingAnchor.constraint(equalTo: providersContainer.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: providersContainer.trailingAnchor),
+            stack.bottomAnchor.constraint(lessThanOrEqualTo: providersContainer.bottomAnchor),
+            selectedProviderPopUp.widthAnchor.constraint(greaterThanOrEqualToConstant: 180),
+        ])
+    }
+
     private func configureLabel(_ label: NSTextField) {
         label.font = .systemFont(ofSize: 13, weight: .medium)
         label.textColor = .labelColor
@@ -348,6 +441,7 @@ private final class SettingsViewController: NSViewController {
         proxyContainer.isHidden = tabControl.selectedSegment != 0
         hotkeyContainer.isHidden = tabControl.selectedSegment != 1
         languageContainer.isHidden = tabControl.selectedSegment != 2
+        providersContainer.isHidden = tabControl.selectedSegment != 3
     }
 
     // MARK: - Logic
@@ -369,10 +463,31 @@ private final class SettingsViewController: NSViewController {
         AppLanguagePreference.allCases[safe: languagePopUp.indexOfSelectedItem] ?? .system
     }
 
+    private func currentProviderConfiguration() -> ProviderSettingsConfiguration {
+        guard !providerOptions.isEmpty else {
+            return .empty
+        }
+
+        let selectedIndex = selectedProviderPopUp.indexOfSelectedItem
+        let selectedID = providerOptions[safe: selectedIndex]?.id ?? providerOptions[0].id
+        var enabledIDs = Set(
+            providerCheckboxes.compactMap { id, button in
+                button.state == .on ? id : nil
+            }
+        )
+        enabledIDs.insert(selectedID)
+
+        return ProviderSettingsConfiguration(
+            selectedProviderID: selectedID,
+            enabledProviderIDs: enabledIDs
+        )
+    }
+
     private func applyLocalizedText() {
         tabControl.setLabel(L.proxy, forSegment: 0)
         tabControl.setLabel(L.hotkey, forSegment: 1)
         tabControl.setLabel(L.languageTitle, forSegment: 2)
+        tabControl.setLabel(L.providers, forSegment: 3)
 
         for (index, mode) in ProxyMode.allCases.enumerated() {
             modeControl.setLabel(L.proxyModeTitle(mode), forSegment: index)
@@ -390,6 +505,10 @@ private final class SettingsViewController: NSViewController {
 
         languageSubtitleLabel.stringValue = L.languageSubtitle
         languageLabel.stringValue = L.languageTitle
+
+        providersSubtitleLabel.stringValue = L.providersSubtitle
+        selectedProviderLabel.stringValue = L.selectedProvider
+        providerEnableLabel.stringValue = L.enabledProviders
 
         versionLabel.stringValue = L.appVersion(AppMetadata.current.version)
         saveButton.title = L.save
@@ -419,6 +538,20 @@ private final class SettingsViewController: NSViewController {
         }
     }
 
+    @objc private func selectedProviderChanged() {
+        let configuration = currentProviderConfiguration()
+        reloadProviderControls(configuration: configuration)
+    }
+
+    @objc private func providerCheckboxChanged(_ sender: NSButton) {
+        guard sender.state == .off,
+              let selectedID = providerOptions[safe: selectedProviderPopUp.indexOfSelectedItem]?.id,
+              providerCheckboxes[selectedID] === sender else {
+            return
+        }
+        sender.state = .on
+    }
+
     private func selectLanguagePreference(_ preference: AppLanguagePreference) {
         let index = AppLanguagePreference.allCases.firstIndex(of: preference) ?? 0
         languagePopUp.selectItem(at: index)
@@ -431,6 +564,38 @@ private final class SettingsViewController: NSViewController {
             languagePopUp.addItem(withTitle: L.languagePreferenceTitle(preference))
         }
         selectLanguagePreference(selectedPreference)
+    }
+
+    private func reloadProviderControls(configuration: ProviderSettingsConfiguration) {
+        selectedProviderPopUp.removeAllItems()
+        for option in providerOptions {
+            selectedProviderPopUp.addItem(withTitle: option.displayName)
+        }
+
+        let selectedID = configuration.selectedProviderID.flatMap { configuredID in
+            providerOptions.contains { $0.id == configuredID } ? configuredID : nil
+        } ?? providerOptions.first?.id
+        if let selectedID,
+           let index = providerOptions.firstIndex(where: { $0.id == selectedID }) {
+            selectedProviderPopUp.selectItem(at: index)
+        }
+
+        for view in providerCheckboxStack.arrangedSubviews {
+            providerCheckboxStack.removeArrangedSubview(view)
+            view.removeFromSuperview()
+        }
+        providerCheckboxes.removeAll()
+
+        for option in providerOptions {
+            let checkbox = NSButton(
+                checkboxWithTitle: option.displayName,
+                target: self,
+                action: #selector(providerCheckboxChanged)
+            )
+            checkbox.state = configuration.isEnabled(option.id) || option.id == selectedID ? .on : .off
+            providerCheckboxStack.addArrangedSubview(checkbox)
+            providerCheckboxes[option.id] = checkbox
+        }
     }
 
     @objc private func save() {
@@ -450,7 +615,7 @@ private final class SettingsViewController: NSViewController {
             }
         }
 
-        onSave?(proxyConfig, hotkeyConfig, currentLanguagePreference())
+        onSave?(proxyConfig, hotkeyConfig, currentLanguagePreference(), currentProviderConfiguration())
         view.window?.close()
     }
 

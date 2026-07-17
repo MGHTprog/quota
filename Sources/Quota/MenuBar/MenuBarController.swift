@@ -1,18 +1,23 @@
 import AppKit
 
+/// Menu bar status item: compact quota popover, refresh/settings/quit actions.
+///
+/// Renders only `QuotaService.primaryProviderID` while the UI remains single-slot.
 @MainActor
-final class MenuBarController: NSObject, RateLimitServiceObserver {
-    private let service: RateLimitService
+final class MenuBarController: NSObject, QuotaServiceObserver {
+    private let service: QuotaService
     private let showSettings: () -> Void
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-    private let contentView = MenuBarLimitView(frame: NSRect(x: 0, y: 0, width: 260, height: 105))
+    private let contentView = MenuBarLimitView(
+        frame: NSRect(x: 0, y: 0, width: MenuBarLimitView.preferredSize.width, height: MenuBarLimitView.preferredSize.height)
+    )
     private let errorItem = NSMenuItem()
     private let settingsItem = NSMenuItem()
     private let refreshItem = NSMenuItem()
     private let quitItem = NSMenuItem()
     private var usesIconOnly = false
 
-    init(service: RateLimitService, showSettings: @escaping () -> Void) {
+    init(service: QuotaService, showSettings: @escaping () -> Void) {
         self.service = service
         self.showSettings = showSettings
     }
@@ -23,7 +28,7 @@ final class MenuBarController: NSObject, RateLimitServiceObserver {
             statusItem.button?.imagePosition = .imageOnly
             usesIconOnly = true
         } else {
-            statusItem.button?.title = "Codex"
+            statusItem.button?.title = service.primaryProvider?.displayName ?? ""
         }
         statusItem.button?.toolTip = L.quotaTooltip
         debugLog("[Quota] status item created")
@@ -55,10 +60,6 @@ final class MenuBarController: NSObject, RateLimitServiceObserver {
         service.addObserver(self)
     }
 
-    func applyPlan(_ plan: String) {
-        contentView.configureModel("Codex", plan: plan)
-    }
-
     func reloadLocalizedText() {
         statusItem.button?.toolTip = L.quotaTooltip
         settingsItem.title = L.settings
@@ -67,26 +68,43 @@ final class MenuBarController: NSObject, RateLimitServiceObserver {
         contentView.reloadLocalizedText()
     }
 
-    func rateLimitService(_ service: RateLimitService, didUpdate state: RateLimitDisplayState) {
+    // MARK: - QuotaServiceObserver
+
+    func quotaService(_ service: QuotaService, didUpdate state: ProviderQuotaState) {
+        guard state.providerID == service.primaryProviderID else { return }
         render(state: state, error: nil)
     }
 
-    func rateLimitService(_ service: RateLimitService, didFail error: Error, lastState: RateLimitDisplayState?) {
+    func quotaService(
+        _ service: QuotaService,
+        didFail error: Error,
+        providerID: ProviderID,
+        lastState: ProviderQuotaState?
+    ) {
+        guard providerID == service.primaryProviderID else { return }
+
         if let lastState {
             render(state: lastState, error: error)
         } else {
-            updateStatusLabel(fiveHour: nil, weekly: nil)
+            updateStatusLabel(remainingLabels: [], displayName: service.displayName(for: providerID))
             errorItem.title = "\(L.errorPrefix): \(error.localizedDescription)"
             errorItem.isHidden = false
         }
     }
 
-    private func render(state: RateLimitDisplayState, error: Error?) {
-        updateStatusLabel(
-            fiveHour: state.fiveHour.isAvailable ? Int(state.fiveHour.remainingPercent.rounded()) : nil,
-            weekly: state.weekly.isAvailable ? Int(state.weekly.remainingPercent.rounded()) : nil
+    // MARK: - Rendering
+
+    private func render(state: ProviderQuotaState, error: Error?) {
+        let rows = state.windowsForCompactDisplay()
+        // Keep one entry per row so a missing 5h window still shows as "--" (not dropped).
+        let remainingLabels = rows.map { window -> String in
+            window.isAvailable ? "\(Int(window.remainingPercent.rounded()))%" : "--%"
+        }
+
+        updateStatusLabel(remainingLabels: remainingLabels, displayName: state.identity.displayName)
+        debugLog(
+            "[Quota] status updated: \(state.providerID.rawValue) \(remainingLabels.joined(separator: "/"))"
         )
-        debugLog("[Quota] status updated: fiveHour=\(state.fiveHour.isAvailable ? String(Int(state.fiveHour.remainingPercent.rounded())) : "--") weekly=\(state.weekly.isAvailable ? String(Int(state.weekly.remainingPercent.rounded())) : "--")")
 
         contentView.update(with: state)
 
@@ -100,14 +118,14 @@ final class MenuBarController: NSObject, RateLimitServiceObserver {
     }
 
     @objc private func refresh() {
-        service.refresh()
+        service.refreshAll()
     }
 
     @objc private func openSettings() {
         showSettings()
     }
 
-    /// Open the status item menu (used by global hotkey).
+    /// Programmatically opens the status-item menu (global hotkey entry point).
     func showMenu() {
         statusItem.button?.performClick(nil)
     }
@@ -130,16 +148,13 @@ final class MenuBarController: NSObject, RateLimitServiceObserver {
         return image
     }
 
-    private func updateStatusLabel(fiveHour: Int?, weekly: Int?) {
-        guard !usesIconOnly else {
-            return
-        }
+    private func updateStatusLabel(remainingLabels: [String], displayName: String) {
+        guard !usesIconOnly else { return }
 
-        if let fiveHour, let weekly {
-            statusItem.button?.title = "Codex \(fiveHour)% / \(weekly)%"
+        if remainingLabels.isEmpty {
+            statusItem.button?.title = "\(displayName) --%"
         } else {
-            statusItem.button?.title = "Codex --%"
+            statusItem.button?.title = "\(displayName) \(remainingLabels.joined(separator: " / "))"
         }
     }
-
 }

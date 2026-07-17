@@ -15,6 +15,7 @@ final class GlobalHotkeyManager {
 
     // MARK: - Public
 
+    /// Registers a single global hotkey. Replaces any previously registered binding.
     func register(keyCode: UInt32, modifiers: UInt32, onTrigger: @escaping () -> Void) {
         unregister()
         self.onTrigger = onTrigger
@@ -38,6 +39,7 @@ final class GlobalHotkeyManager {
         }
     }
 
+    /// Removes the current global hotkey and Carbon event handler.
     func unregister() {
         if let ref = hotkeyRef {
             UnregisterEventHotKey(ref)

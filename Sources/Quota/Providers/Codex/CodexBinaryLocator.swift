@@ -1,5 +1,6 @@
 import Foundation
 
+/// Resolves the `codex` executable path used to start app-server.
 struct CodexBinaryLocator {
     private let fileManager: FileManager
     private let bundledBinaryURLs = [
