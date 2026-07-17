@@ -1,7 +1,7 @@
 "settings.title" = "设置";
 "menu.refresh" = "刷新";
 "menu.quit" = "退出";
-"quota.tooltip" = "Codex 额度";
+"quota.tooltip" = "Quota 额度";
 "error.prefix" = "错误";
 "refresh.failed.prefix" = "刷新失败";
 
@@ -9,7 +9,7 @@
 "quota.window.weekly" = "周限额";
 "quota.remaining" = "剩余";
 "quota.reset" = "重置";
-"quota.resetCredits.suffix" = "[重置额度 %d]";
+"quota.resetCredits.suffix" = "重置额度 %d";
 
 "settings.tab.proxy" = "代理";
 "settings.tab.hotkey" = "快捷键";

@@ -1,8 +1,6 @@
 import AppKit
 
-/// Menu bar status item: compact quota popover, refresh/settings/quit actions.
-///
-/// Renders only `QuotaService.primaryProviderID` while the UI remains single-slot.
+/// Menu bar status item: provider-driven quota panel and status label.
 @MainActor
 final class MenuBarController: NSObject, QuotaServiceObserver {
     private let service: QuotaService
@@ -11,10 +9,8 @@ final class MenuBarController: NSObject, QuotaServiceObserver {
     private let contentView = MenuBarLimitView(
         frame: NSRect(x: 0, y: 0, width: MenuBarLimitView.preferredSize.width, height: MenuBarLimitView.preferredSize.height)
     )
-    private let errorItem = NSMenuItem()
-    private let settingsItem = NSMenuItem()
-    private let refreshItem = NSMenuItem()
-    private let quitItem = NSMenuItem()
+    private var panel: NSPanel?
+    private var closeEventMonitor: Any?
     private var usesIconOnly = false
 
     init(service: QuotaService, showSettings: @escaping () -> Void) {
@@ -31,30 +27,14 @@ final class MenuBarController: NSObject, QuotaServiceObserver {
             statusItem.button?.title = service.primaryProvider?.displayName ?? ""
         }
         statusItem.button?.toolTip = L.quotaTooltip
+        statusItem.button?.target = self
+        statusItem.button?.action = #selector(togglePanel)
         debugLog("[Quota] status item created")
 
-        let menu = NSMenu()
-        let visualItem = NSMenuItem()
-        visualItem.view = contentView
-        visualItem.isEnabled = false
-
-        errorItem.isEnabled = false
-        errorItem.isHidden = true
-
-        menu.addItem(visualItem)
-        menu.addItem(errorItem)
-        menu.addItem(.separator())
-        settingsItem.action = #selector(openSettings)
-        settingsItem.keyEquivalent = ","
-        refreshItem.action = #selector(refresh)
-        refreshItem.keyEquivalent = "r"
-        quitItem.action = #selector(quit)
-        quitItem.keyEquivalent = "q"
-        menu.addItem(settingsItem)
-        menu.addItem(refreshItem)
-        menu.addItem(quitItem)
-        menu.items.forEach { $0.target = self }
-        statusItem.menu = menu
+        contentView.setFrameSize(contentView.intrinsicContentSize)
+        contentView.onSettings = { [weak self] in self?.openSettings() }
+        contentView.onRefresh = { [weak self] in self?.refresh() }
+        contentView.onQuit = { [weak self] in self?.quit() }
         reloadLocalizedText()
 
         service.addObserver(self)
@@ -62,17 +42,14 @@ final class MenuBarController: NSObject, QuotaServiceObserver {
 
     func reloadLocalizedText() {
         statusItem.button?.toolTip = L.quotaTooltip
-        settingsItem.title = L.settings
-        refreshItem.title = L.refresh
-        quitItem.title = L.quit
         contentView.reloadLocalizedText()
+        syncContentView()
     }
 
     // MARK: - QuotaServiceObserver
 
     func quotaService(_ service: QuotaService, didUpdate state: ProviderQuotaState) {
-        guard state.providerID == service.primaryProviderID else { return }
-        render(state: state, error: nil)
+        render(state: state)
     }
 
     func quotaService(
@@ -81,39 +58,38 @@ final class MenuBarController: NSObject, QuotaServiceObserver {
         providerID: ProviderID,
         lastState: ProviderQuotaState?
     ) {
-        guard providerID == service.primaryProviderID else { return }
-
         if let lastState {
             render(state: lastState, error: error)
         } else {
-            updateStatusLabel(remainingLabels: [], displayName: service.displayName(for: providerID))
-            errorItem.title = "\(L.errorPrefix): \(error.localizedDescription)"
-            errorItem.isHidden = false
+            if providerID == service.primaryProviderID {
+                updateStatusLabel(remainingLabels: [], displayName: service.displayName(for: providerID))
+            }
+            contentView.updateFailure(error, providerID: providerID)
+            resizeContentViewIfNeeded()
         }
     }
 
     // MARK: - Rendering
 
-    private func render(state: ProviderQuotaState, error: Error?) {
+    private func render(state: ProviderQuotaState, error: Error? = nil) {
         let rows = state.windowsForCompactDisplay()
         // Keep one entry per row so a missing 5h window still shows as "--" (not dropped).
         let remainingLabels = rows.map { window -> String in
             window.isAvailable ? "\(Int(window.remainingPercent.rounded()))%" : "--%"
         }
 
-        updateStatusLabel(remainingLabels: remainingLabels, displayName: state.identity.displayName)
+        if state.providerID == service.primaryProviderID {
+            updateStatusLabel(remainingLabels: remainingLabels, displayName: state.identity.displayName)
+        }
         debugLog(
             "[Quota] status updated: \(state.providerID.rawValue) \(remainingLabels.joined(separator: "/"))"
         )
 
-        contentView.update(with: state)
+        syncContentView()
 
         if let error {
             debugLog("[Quota] refresh failed: \(error.localizedDescription)")
-            errorItem.title = "\(L.refreshFailedPrefix): \(error.localizedDescription)"
-            errorItem.isHidden = false
-        } else {
-            errorItem.isHidden = true
+            contentView.updateFailure(error, providerID: state.providerID)
         }
     }
 
@@ -122,16 +98,25 @@ final class MenuBarController: NSObject, QuotaServiceObserver {
     }
 
     @objc private func openSettings() {
+        closePanel()
         showSettings()
     }
 
-    /// Programmatically opens the status-item menu (global hotkey entry point).
+    /// Programmatically opens the status-item panel (global hotkey entry point).
     func showMenu() {
-        statusItem.button?.performClick(nil)
+        showPanel()
     }
 
     @objc private func quit() {
         NSApplication.shared.terminate(nil)
+    }
+
+    @objc private func togglePanel() {
+        if panel?.isVisible == true {
+            closePanel()
+        } else {
+            showPanel()
+        }
     }
 
     private func loadStatusImage() -> NSImage? {
@@ -155,6 +140,92 @@ final class MenuBarController: NSObject, QuotaServiceObserver {
             statusItem.button?.title = "\(displayName) --%"
         } else {
             statusItem.button?.title = "\(displayName) \(remainingLabels.joined(separator: " / "))"
+        }
+    }
+
+    private func syncContentView() {
+        contentView.update(
+            providers: service.visibleProviderOptions,
+            states: service.visibleStates
+        )
+        resizeContentViewIfNeeded()
+    }
+
+    private func resizeContentViewIfNeeded() {
+        let size = contentView.intrinsicContentSize
+        guard contentView.frame.size != size else { return }
+        contentView.setFrameSize(size)
+        panel?.setContentSize(size)
+    }
+
+    private func showPanel() {
+        syncContentView()
+        guard let button = statusItem.button else { return }
+
+        let panel = panel ?? makePanel()
+        self.panel = panel
+        panel.setContentSize(contentView.intrinsicContentSize)
+        panel.setFrameOrigin(panelOrigin(for: panel, button: button))
+        panel.orderFrontRegardless()
+        startCloseMonitor()
+    }
+
+    private func closePanel() {
+        panel?.orderOut(nil)
+        stopCloseMonitor()
+    }
+
+    private func makePanel() -> NSPanel {
+        let size = contentView.intrinsicContentSize
+        let panel = NSPanel(
+            contentRect: NSRect(origin: .zero, size: size),
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+        panel.contentView = contentView
+        panel.backgroundColor = .clear
+        panel.isOpaque = false
+        panel.hasShadow = true
+        panel.level = .statusBar
+        panel.collectionBehavior = [.canJoinAllSpaces, .transient]
+        panel.isReleasedWhenClosed = false
+        return panel
+    }
+
+    private func panelOrigin(for panel: NSPanel, button: NSStatusBarButton) -> NSPoint {
+        guard let window = button.window,
+              let screen = window.screen ?? NSScreen.main else {
+            return .zero
+        }
+
+        let buttonRectInWindow = button.convert(button.bounds, to: nil)
+        let buttonRectOnScreen = window.convertToScreen(buttonRectInWindow)
+        let panelSize = panel.frame.size
+        let visibleFrame = screen.visibleFrame
+        let gap: CGFloat = 2
+
+        let x = min(
+            max(buttonRectOnScreen.midX - panelSize.width / 2, visibleFrame.minX + 8),
+            visibleFrame.maxX - panelSize.width - 8
+        )
+        let y = buttonRectOnScreen.minY - panelSize.height - gap
+        return NSPoint(x: x, y: max(y, visibleFrame.minY + 8))
+    }
+
+    private func startCloseMonitor() {
+        stopCloseMonitor()
+        closeEventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+            DispatchQueue.main.async {
+                self?.closePanel()
+            }
+        }
+    }
+
+    private func stopCloseMonitor() {
+        if let closeEventMonitor {
+            NSEvent.removeMonitor(closeEventMonitor)
+            self.closeEventMonitor = nil
         }
     }
 }

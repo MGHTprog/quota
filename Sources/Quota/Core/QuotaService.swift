@@ -73,6 +73,17 @@ final class QuotaService {
         registry.settingsOptions
     }
 
+    var visibleProviderOptions: [ProviderSettingsOption] {
+        registry
+            .enabledProviders(configuration: providerSettingsStore.configuration)
+            .map { ProviderSettingsOption(id: $0.id, displayName: $0.displayName) }
+    }
+
+    var visibleStates: [ProviderQuotaState] {
+        let ids = visibleProviderOptions.map(\.id)
+        return ids.compactMap { states[$0] }
+    }
+
     func addObserver(_ observer: QuotaServiceObserver) {
         observers.add(observer)
         for state in states.values {

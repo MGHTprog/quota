@@ -1,7 +1,7 @@
 "settings.title" = "Settings";
 "menu.refresh" = "Refresh";
 "menu.quit" = "Quit";
-"quota.tooltip" = "Codex quota";
+"quota.tooltip" = "Quota";
 "error.prefix" = "Error";
 "refresh.failed.prefix" = "Refresh failed";
 
@@ -9,7 +9,7 @@
 "quota.window.weekly" = "Weekly";
 "quota.remaining" = "Left";
 "quota.reset" = "Reset";
-"quota.resetCredits.suffix" = "[%d reset credit]";
+"quota.resetCredits.suffix" = "%d reset credit";
 
 "settings.tab.proxy" = "Proxy";
 "settings.tab.hotkey" = "Hotkey";
