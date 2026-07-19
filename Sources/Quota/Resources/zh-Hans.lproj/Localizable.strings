@@ -55,8 +55,12 @@
 
 "error.codexBinaryMissing" = "未找到 Codex 可执行文件";
 "error.missingRateLimitWindow" = "额度响应缺少窗口数据";
-"error.invalidResponse" = "无法解析 Codex 响应";
+"error.invalidResponse" = "无法解析额度响应";
 "error.requestTimedOut" = "Codex 请求超时";
+"error.grokUnauthorized" = "Grok 未登录或登录已过期";
+"error.grokNotSignedIn" = "Grok 未登录，请先运行 grok login";
+"error.grokMissingUsageWindow" = "Grok 响应缺少用量数据";
+"error.grokRequestFailed" = "Grok 请求失败（HTTP %d）";
 
 "notification.severity.warning" = "不足";
 "notification.severity.urgent" = "告急";

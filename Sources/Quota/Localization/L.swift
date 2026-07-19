@@ -58,6 +58,10 @@ enum L {
     static var missingRateLimitWindow: String { tr(.missingRateLimitWindow) }
     static var invalidResponse: String { tr(.invalidResponse) }
     static var requestTimedOut: String { tr(.requestTimedOut) }
+    static var grokUnauthorized: String { tr(.grokUnauthorized) }
+    static var grokNotSignedIn: String { tr(.grokNotSignedIn) }
+    static var grokMissingUsageWindow: String { tr(.grokMissingUsageWindow) }
+    static func grokRequestFailed(_ statusCode: Int) -> String { tr(.grokRequestFailed, statusCode) }
 
     static func proxyModeTitle(_ mode: ProxyMode) -> String {
         switch mode {

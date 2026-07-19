@@ -17,4 +17,5 @@ struct ProviderID: RawRepresentable, Hashable, Sendable, ExpressibleByStringLite
     }
 
     static let codex = ProviderID(rawValue: "codex")
+    static let grok = ProviderID(rawValue: "grok")
 }

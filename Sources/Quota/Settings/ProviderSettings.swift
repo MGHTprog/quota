@@ -15,10 +15,27 @@ struct ProviderSettingsConfiguration: Equatable {
     }
 }
 
-/// Lightweight provider option shown in Settings.
+/// Lightweight provider option shown in Settings and compact provider tabs.
 struct ProviderSettingsOption: Equatable {
     var id: ProviderID
     var displayName: String
+    var iconResourceName: String?
+    var fallbackGlyph: String
+    var accentColorHex: String
+
+    init(
+        id: ProviderID,
+        displayName: String,
+        iconResourceName: String? = nil,
+        fallbackGlyph: String? = nil,
+        accentColorHex: String = "#3B82F6"
+    ) {
+        self.id = id
+        self.displayName = displayName
+        self.iconResourceName = iconResourceName
+        self.fallbackGlyph = fallbackGlyph ?? String(displayName.prefix(1)).uppercased()
+        self.accentColorHex = accentColorHex
+    }
 }
 
 /// Persists provider display and enablement choices in `UserDefaults`.

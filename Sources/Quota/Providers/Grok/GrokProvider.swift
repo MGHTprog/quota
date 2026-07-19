@@ -1,0 +1,49 @@
+import Foundation
+
+/// Grok provider: reads weekly Build credits via the CLI billing API.
+///
+/// Auth comes from `~/.grok/auth.json` (`grok login`).
+final class GrokProvider: QuotaProvider {
+    let id: ProviderID = .grok
+    let displayName = "Grok"
+    let iconResourceName: String? = "ProviderIconGrok"
+    let fallbackGlyph = "xAI"
+    let accentColorHex = "#111111"
+
+    private let proxySettingsStore: ProxySettingsStore
+    private var client: GrokBillingClient
+
+    init(proxySettingsStore: ProxySettingsStore = .shared) {
+        self.proxySettingsStore = proxySettingsStore
+        self.client = GrokBillingClient(
+            proxyConfiguration: proxySettingsStore.configuration
+        )
+    }
+
+    func fetch(completion: @escaping (Result<ProviderQuotaState, Error>) -> Void) {
+        client.fetchBilling { [displayName] result in
+            switch result {
+            case .success(let response):
+                do {
+                    let plan = response.config.subscriptionTier
+                        ?? response.config.productUsage?.first?.product
+                    let identity = ProviderIdentity(displayName: displayName, plan: plan)
+                    let state = try response.makeProviderState(identity: identity)
+                    completion(.success(state))
+                } catch {
+                    completion(.failure(error))
+                }
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+
+    func stop() {}
+
+    func invalidateConnection() {
+        client = GrokBillingClient(
+            proxyConfiguration: proxySettingsStore.configuration
+        )
+    }
+}

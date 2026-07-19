@@ -38,8 +38,10 @@ final class MenuBarLimitView: NSView {
     var onSettings: (() -> Void)?
     var onRefresh: (() -> Void)?
     var onQuit: (() -> Void)?
+    /// Called when the panel should resize (e.g. switching All / single provider).
+    var onPreferredSizeChange: (() -> Void)?
 
-    private let codexIcon = MenuBarLimitView.loadProviderIcon(named: "ProviderIconCodex")
+    private var iconCache: [String: NSImage] = [:]
     private var providerOptions: [ProviderSettingsOption] = []
     private var statesByProvider: [ProviderID: ProviderQuotaState] = [:]
     private var errorsByProvider: [ProviderID: Error] = [:]
@@ -132,10 +134,11 @@ final class MenuBarLimitView: NSView {
         let point = convert(event.locationInWindow, from: nil)
 
         if let tab = tabRects.first(where: { $0.rect.contains(point) }) {
+            guard selectedProviderID != tab.id else { return }
             selectedProviderID = tab.id
             invalidateIntrinsicContentSize()
-            setFrameSize(intrinsicContentSize)
             needsDisplay = true
+            onPreferredSizeChange?()
             return
         }
 
@@ -170,14 +173,14 @@ final class MenuBarLimitView: NSView {
         var x = Layout.outerPadding
         let allWidth: CGFloat = 36
         let allRect = NSRect(x: x, y: top - Layout.tabHeight, width: allWidth, height: Layout.tabHeight)
-        drawTab(rect: allRect, isSelected: selectedProviderID == nil, providerID: nil)
+        drawTab(rect: allRect, isSelected: selectedProviderID == nil, option: nil)
         tabRects.append((nil, allRect))
         x += allWidth + Layout.tabGap
 
         let widths = providerTabWidths(availableX: bounds.width - Layout.outerPadding - x)
         for (option, tabWidth) in zip(providerOptions, widths) {
             let rect = NSRect(x: x, y: top - Layout.tabHeight, width: tabWidth, height: Layout.tabHeight)
-            drawTab(rect: rect, isSelected: selectedProviderID == option.id, providerID: option.id)
+            drawTab(rect: rect, isSelected: selectedProviderID == option.id, option: option)
             tabRects.append((option.id, rect))
             x += tabWidth + Layout.tabGap
         }
@@ -238,7 +241,7 @@ final class MenuBarLimitView: NSView {
         }
     }
 
-    private func drawTab(rect: NSRect, isSelected: Bool, providerID: ProviderID?) {
+    private func drawTab(rect: NSRect, isSelected: Bool, option: ProviderSettingsOption?) {
         let path = NSBezierPath(roundedRect: rect, xRadius: 8, yRadius: 8)
         (isSelected ? Palette.selectedTab : Palette.surface).setFill()
         path.fill()
@@ -253,10 +256,10 @@ final class MenuBarLimitView: NSView {
             width: iconSize,
             height: iconSize
         )
-        drawTabIcon(providerID: providerID, rect: iconRect, isSelected: isSelected)
+        drawTabIcon(option: option, rect: iconRect, isSelected: isSelected)
 
-        if let providerID {
-            let progress = statesByProvider[providerID].flatMap(firstAvailablePercent)
+        if let option {
+            let progress = statesByProvider[option.id].flatMap(firstAvailablePercent)
             let barRect = NSRect(x: rect.minX + 8, y: rect.minY + 5, width: rect.width - 16, height: 2.5)
             drawProgressBar(in: barRect, percent: progress, color: progress.map(barColor) ?? .tertiaryLabelColor)
         }
@@ -265,10 +268,12 @@ final class MenuBarLimitView: NSView {
     private func drawProviderCard(option: ProviderSettingsOption, rect: NSRect) {
         let state = statesByProvider[option.id]
         let identity = state?.identity ?? ProviderIdentity(displayName: option.displayName, plan: nil)
-        let windows = state?.windowsForCompactDisplay() ?? [.empty, .empty]
+        // Use the provider's real windows (Codex always sends 2; Grok only weekly).
+        // Do not pad with empty rows — that leaves a fake "--" slot under Grok.
+        let windows = displayWindows(for: state)
 
         let headerY = rect.maxY - Layout.iconSize
-        drawProviderIcon(title: identity.displayName, providerID: option.id, rect: NSRect(
+        drawProviderIcon(option: option, rect: NSRect(
             x: rect.minX,
             y: headerY,
             width: Layout.iconSize,
@@ -387,9 +392,9 @@ final class MenuBarLimitView: NSView {
         fill.fill()
     }
 
-    private func drawProviderIcon(title: String, providerID: ProviderID, rect: NSRect) {
-        if providerID == .codex, let codexIcon {
-            codexIcon.draw(
+    private func drawProviderIcon(option: ProviderSettingsOption, rect: NSRect) {
+        if let icon = providerIcon(for: option) {
+            icon.draw(
                 in: rect,
                 from: .zero,
                 operation: .sourceOver,
@@ -399,21 +404,15 @@ final class MenuBarLimitView: NSView {
         }
 
         let path = NSBezierPath(roundedRect: rect, xRadius: 7, yRadius: 7)
-        providerID == .codex ? Palette.codexGreen.setFill() : accentColor(for: providerID).setFill()
+        accentColor(for: option).setFill()
         path.fill()
 
-        if providerID == .codex {
-            drawCodexMark(in: rect.insetBy(dx: 5, dy: 5), color: .white, lineWidth: 1.8)
-            return
-        }
-
-        let symbol = String(title.prefix(1)).uppercased()
         let attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 15, weight: .medium),
+            .font: NSFont.systemFont(ofSize: option.fallbackGlyph.count > 1 ? 9 : 15, weight: .medium),
             .foregroundColor: NSColor.white
         ]
-        let size = (symbol as NSString).size(withAttributes: attributes)
-        symbol.draw(
+        let size = (option.fallbackGlyph as NSString).size(withAttributes: attributes)
+        option.fallbackGlyph.draw(
             at: NSPoint(x: rect.midX - size.width / 2, y: rect.midY - size.height / 2),
             withAttributes: attributes
         )
@@ -469,7 +468,20 @@ final class MenuBarLimitView: NSView {
         if statesByProvider[providerID] == nil, errorsByProvider[providerID] != nil {
             return 108
         }
-        return Layout.iconSize + 9 + Layout.rowHeight * 2
+        let rows = CGFloat(max(1, displayWindows(for: statesByProvider[providerID]).count))
+        return Layout.iconSize + 9 + Layout.rowHeight * rows
+    }
+
+    /// Windows shown in a provider card. Prefer the real window list so single-window
+    /// providers (Grok weekly) do not get a blank second row.
+    private func displayWindows(for state: ProviderQuotaState?) -> [QuotaWindow] {
+        guard let state else {
+            return [.empty, .empty]
+        }
+        if state.windows.isEmpty {
+            return [.empty, .empty]
+        }
+        return state.windows
     }
 
     private func firstAvailablePercent(_ state: ProviderQuotaState) -> Double? {
@@ -495,27 +507,20 @@ final class MenuBarLimitView: NSView {
         )
     }
 
-    private func drawTabIcon(providerID: ProviderID?, rect: NSRect, isSelected: Bool) {
-        if let providerID {
-            if providerID == .codex {
-                if let codexIcon {
-                    codexIcon.draw(
-                        in: rect,
-                        from: .zero,
-                        operation: .sourceOver,
-                        fraction: 1
-                    )
-                    return
-                }
-                let iconRect = rect.insetBy(dx: 1.5, dy: 1.5)
-                let background = NSBezierPath(roundedRect: iconRect, xRadius: 4, yRadius: 4)
-                Palette.codexGreen.setFill()
-                background.fill()
-                drawCodexMark(in: iconRect.insetBy(dx: 2.8, dy: 2.8), color: .white, lineWidth: 1.0)
-            } else {
-                accentColor(for: providerID).setFill()
-                NSBezierPath(ovalIn: rect.insetBy(dx: 2, dy: 2)).fill()
+    private func drawTabIcon(option: ProviderSettingsOption?, rect: NSRect, isSelected: Bool) {
+        if let option {
+            if let icon = providerIcon(for: option) {
+                icon.draw(
+                    in: rect,
+                    from: .zero,
+                    operation: .sourceOver,
+                    fraction: 1
+                )
+                return
             }
+
+            accentColor(for: option).setFill()
+            NSBezierPath(ovalIn: rect.insetBy(dx: 2, dy: 2)).fill()
             return
         }
 
@@ -548,37 +553,8 @@ final class MenuBarLimitView: NSView {
         )
     }
 
-    private func drawCodexMark(in rect: NSRect, color: NSColor, lineWidth: CGFloat) {
-        color.setStroke()
-        let center = NSPoint(x: rect.midX, y: rect.midY)
-        let radius = min(rect.width, rect.height) * 0.28
-        for index in 0..<6 {
-            let angle = CGFloat(index) * .pi / 3
-            let cx = center.x + cos(angle) * radius * 0.72
-            let cy = center.y + sin(angle) * radius * 0.72
-            let oval = NSRect(
-                x: cx - radius,
-                y: cy - radius * 0.62,
-                width: radius * 2,
-                height: radius * 1.24
-            )
-            var transform = AffineTransform(translationByX: cx, byY: cy)
-            transform.rotate(byRadians: angle)
-            transform.translate(x: -cx, y: -cy)
-            let path = NSBezierPath(ovalIn: oval)
-            path.transform(using: transform)
-            path.lineWidth = lineWidth
-            path.stroke()
-        }
-    }
-
-    private func accentColor(for providerID: ProviderID) -> NSColor {
-        let colors: [NSColor] = [.systemGreen, .systemBlue, .systemPurple, .systemOrange, .systemTeal]
-        let value = providerID.rawValue.unicodeScalars.reduce(0) { partial, scalar in
-            partial &+ Int(scalar.value)
-        }
-        let index = value % colors.count
-        return colors[index]
+    private func accentColor(for option: ProviderSettingsOption) -> NSColor {
+        NSColor(hex: option.accentColorHex) ?? .systemBlue
     }
 
     private func providerTabWidths(availableX: CGFloat) -> [CGFloat] {
@@ -595,10 +571,45 @@ final class MenuBarLimitView: NSView {
         return naturalWidths.map { max(36, floor($0 * scale)) }
     }
 
+    private func providerIcon(for option: ProviderSettingsOption) -> NSImage? {
+        guard let iconResourceName = option.iconResourceName else {
+            return nil
+        }
+        if let cached = iconCache[iconResourceName] {
+            return cached
+        }
+        guard let icon = Self.loadProviderIcon(named: iconResourceName) else {
+            return nil
+        }
+        iconCache[iconResourceName] = icon
+        return icon
+    }
+
     private static func loadProviderIcon(named name: String) -> NSImage? {
-        let url = Bundle.main.url(forResource: name, withExtension: "png")
-            ?? Bundle.module.url(forResource: name, withExtension: "png")
-        return url.flatMap(NSImage.init(contentsOf:))
+        for fileExtension in ["png", "svg"] {
+            let url = Bundle.main.url(forResource: name, withExtension: fileExtension)
+                ?? Bundle.module.url(forResource: name, withExtension: fileExtension)
+            if let image = url.flatMap(NSImage.init(contentsOf:)) {
+                return image
+            }
+        }
+        return nil
+    }
+}
+
+private extension NSColor {
+    convenience init?(hex: String) {
+        let normalized = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
+        guard normalized.count == 6, let value = Int(normalized, radix: 16) else {
+            return nil
+        }
+
+        self.init(
+            calibratedRed: CGFloat((value >> 16) & 0xFF) / 255,
+            green: CGFloat((value >> 8) & 0xFF) / 255,
+            blue: CGFloat(value & 0xFF) / 255,
+            alpha: 1
+        )
     }
 }
 

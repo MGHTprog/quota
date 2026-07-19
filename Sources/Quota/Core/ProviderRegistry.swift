@@ -22,7 +22,7 @@ final class ProviderRegistry {
     }
 
     var settingsOptions: [ProviderSettingsOption] {
-        providers.map { ProviderSettingsOption(id: $0.id, displayName: $0.displayName) }
+        providers.map { Self.settingsOption(for: $0) }
     }
 
     func enabledProviders(configuration: ProviderSettingsConfiguration) -> [any QuotaProvider] {
@@ -58,6 +58,16 @@ final class ProviderRegistry {
         }
     }
 
+    static func settingsOption(for provider: any QuotaProvider) -> ProviderSettingsOption {
+        ProviderSettingsOption(
+            id: provider.id,
+            displayName: provider.displayName,
+            iconResourceName: provider.iconResourceName,
+            fallbackGlyph: provider.fallbackGlyph,
+            accentColorHex: provider.accentColorHex
+        )
+    }
+
     /// App wiring. Register new providers here only.
     static func makeDefault(
         proxySettingsStore: ProxySettingsStore = .shared,
@@ -67,6 +77,7 @@ final class ProviderRegistry {
             proxySettingsStore: proxySettingsStore,
             appMetadata: appMetadata
         )
-        return ProviderRegistry(providers: [codex])
+        let grok = GrokProvider(proxySettingsStore: proxySettingsStore)
+        return ProviderRegistry(providers: [codex, grok])
     }
 }

@@ -76,7 +76,7 @@ final class QuotaService {
     var visibleProviderOptions: [ProviderSettingsOption] {
         registry
             .enabledProviders(configuration: providerSettingsStore.configuration)
-            .map { ProviderSettingsOption(id: $0.id, displayName: $0.displayName) }
+            .map { ProviderRegistry.settingsOption(for: $0) }
     }
 
     var visibleStates: [ProviderQuotaState] {

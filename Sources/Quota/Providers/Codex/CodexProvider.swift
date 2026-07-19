@@ -8,6 +8,9 @@ final class CodexProvider: QuotaProvider {
     let id: ProviderID = .codex
     /// User-facing brand name for this provider (owned here, not on `ProviderID`).
     let displayName = "Codex"
+    let iconResourceName: String? = "ProviderIconCodex"
+    let fallbackGlyph = "C"
+    let accentColorHex = "#16A34A"
 
     private let client: CodexAppServerClient
     private var lastKnownPlan: String?

@@ -35,6 +35,9 @@ final class MenuBarController: NSObject, QuotaServiceObserver {
         contentView.onSettings = { [weak self] in self?.openSettings() }
         contentView.onRefresh = { [weak self] in self?.refresh() }
         contentView.onQuit = { [weak self] in self?.quit() }
+        contentView.onPreferredSizeChange = { [weak self] in
+            self?.resizePanelToFitContent(reposition: true)
+        }
         reloadLocalizedText()
 
         service.addObserver(self)
@@ -65,7 +68,7 @@ final class MenuBarController: NSObject, QuotaServiceObserver {
                 updateStatusLabel(remainingLabels: [], displayName: service.displayName(for: providerID))
             }
             contentView.updateFailure(error, providerID: providerID)
-            resizeContentViewIfNeeded()
+            resizePanelToFitContent(reposition: panel?.isVisible == true)
         }
     }
 
@@ -148,14 +151,28 @@ final class MenuBarController: NSObject, QuotaServiceObserver {
             providers: service.visibleProviderOptions,
             states: service.visibleStates
         )
-        resizeContentViewIfNeeded()
+        resizePanelToFitContent(reposition: panel?.isVisible == true)
     }
 
-    private func resizeContentViewIfNeeded() {
+    /// Keep the content view and hosting panel the same size.
+    ///
+    /// NSPanel origin is bottom-left, so after a height change we re-anchor
+    /// under the status item; otherwise All ↔ single tab switches clip or leave gaps.
+    private func resizePanelToFitContent(reposition: Bool) {
         let size = contentView.intrinsicContentSize
-        guard contentView.frame.size != size else { return }
-        contentView.setFrameSize(size)
-        panel?.setContentSize(size)
+        if contentView.frame.size != size {
+            contentView.setFrameSize(size)
+        }
+
+        guard let panel else { return }
+
+        if panel.frame.size != size {
+            panel.setContentSize(size)
+        }
+
+        if reposition, panel.isVisible, let button = statusItem.button {
+            panel.setFrameOrigin(panelOrigin(for: panel, button: button))
+        }
     }
 
     private func showPanel() {
@@ -164,7 +181,7 @@ final class MenuBarController: NSObject, QuotaServiceObserver {
 
         let panel = panel ?? makePanel()
         self.panel = panel
-        panel.setContentSize(contentView.intrinsicContentSize)
+        resizePanelToFitContent(reposition: false)
         panel.setFrameOrigin(panelOrigin(for: panel, button: button))
         panel.orderFrontRegardless()
         startCloseMonitor()

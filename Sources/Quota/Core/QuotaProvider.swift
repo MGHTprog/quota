@@ -7,6 +7,9 @@ import Foundation
 protocol QuotaProvider: AnyObject {
     var id: ProviderID { get }
     var displayName: String { get }
+    var iconResourceName: String? { get }
+    var fallbackGlyph: String { get }
+    var accentColorHex: String { get }
 
     /// When `false`, `QuotaService` skips this provider during refresh.
     var isEnabled: Bool { get }
@@ -26,6 +29,14 @@ protocol QuotaProvider: AnyObject {
 }
 
 extension QuotaProvider {
+    var iconResourceName: String? { nil }
+
+    var fallbackGlyph: String {
+        String(displayName.prefix(1)).uppercased()
+    }
+
+    var accentColorHex: String { "#3B82F6" }
+
     /// Default: providers are polled unless they override this.
     var isEnabled: Bool { true }
 
