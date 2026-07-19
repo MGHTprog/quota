@@ -25,9 +25,10 @@ final class GrokProvider: QuotaProvider {
             switch result {
             case .success(let response):
                 do {
-                    let plan = response.config.subscriptionTier
-                        ?? response.config.productUsage?.first?.product
-                    let identity = ProviderIdentity(displayName: displayName, plan: plan)
+                    let identity = ProviderIdentity(
+                        displayName: displayName,
+                        plan: response.displayPlan
+                    )
                     let state = try response.makeProviderState(identity: identity)
                     completion(.success(state))
                 } catch {

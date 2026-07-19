@@ -25,21 +25,18 @@ final class ProviderRegistry {
         providers.map { Self.settingsOption(for: $0) }
     }
 
+    /// Enabled providers in the user's display order (popup tabs / refresh).
     func enabledProviders(configuration: ProviderSettingsConfiguration) -> [any QuotaProvider] {
-        providers.filter { provider in
-            provider.isEnabled && configuration.isEnabled(provider.id)
+        let orderedIDs = configuration.orderedEnabledIDs(availableIDs: providerIDs)
+        return orderedIDs.compactMap { id in
+            guard let provider = provider(id: id), provider.isEnabled else { return nil }
+            return provider
         }
     }
 
+    /// Primary provider = first enabled in order (leftmost tab; Touch Bar when available).
     func primaryProvider(configuration: ProviderSettingsConfiguration) -> (any QuotaProvider)? {
-        if let selectedProviderID = configuration.selectedProviderID,
-           configuration.isEnabled(selectedProviderID),
-           let provider = provider(id: selectedProviderID),
-           provider.isEnabled {
-            return provider
-        }
-
-        return enabledProviders(configuration: configuration).first
+        enabledProviders(configuration: configuration).first
     }
 
     func provider(id: ProviderID) -> (any QuotaProvider)? {

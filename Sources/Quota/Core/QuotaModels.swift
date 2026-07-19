@@ -81,8 +81,10 @@ struct ProviderQuotaState: Equatable, Sendable {
     /// Optional fetch-path label for diagnostics (e.g. `"app-server"`).
     var sourceLabel: String?
 
-    /// First `rowCount` windows for the fixed two-row menu / Touch Bar layout.
-    /// Missing slots are filled with `QuotaWindow.empty` (not provider-specific labels).
+    /// First `rowCount` windows for fixed multi-slot UIs (e.g. Touch Bar).
+    /// Missing slots are filled with `QuotaWindow.empty`.
+    /// Menu bar should prefer `windows` directly so providers without a slot
+    /// (Grok weekly-only) do not show a fake empty row.
     func windowsForCompactDisplay(rowCount: Int = 2) -> [QuotaWindow] {
         precondition(rowCount > 0)
         var rows = Array(windows.prefix(rowCount))

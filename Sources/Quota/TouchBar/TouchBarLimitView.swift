@@ -22,6 +22,8 @@ final class TouchBarLimitView: NSView {
 
     func update(with state: ProviderQuotaState) {
         self.state = state
+        // Touch Bar is a fixed two-row control; pad missing slots with "--".
+        // Menu bar does not pad — it only shows real product windows.
         let rows = state.windowsForCompactDisplay()
 
         for (index, rowView) in rowViews.enumerated() {

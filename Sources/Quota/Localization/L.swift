@@ -40,9 +40,11 @@ enum L {
     static var clickToRecordHotkey: String { tr(.clickToRecordHotkey) }
 
     static var languageSubtitle: String { tr(.languageSubtitle) }
-    static var providersSubtitle: String { tr(.providersSubtitle) }
-    static var selectedProvider: String { tr(.selectedProvider) }
-    static var enabledProviders: String { tr(.enabledProviders) }
+    static var providersSubtitle: String {
+        tr(.providersSubtitle, ProviderDisplayLimits.maxEnabledCount)
+    }
+    static var providersHelp: String { tr(.providersHelp) }
+    static var providerPrimaryBadge: String { tr(.providerPrimaryBadge) }
 
     static var invalidProxyTitle: String { tr(.invalidProxyTitle) }
     static var invalidProxyMessage: String { tr(.invalidProxyMessage) }

@@ -4,11 +4,12 @@ import AppKit
 
 private enum Layout {
     static let windowWidth: CGFloat = 480
-    static let windowHeight: CGFloat = 320
+    static let windowHeight: CGFloat = 360
     static let padding: CGFloat = 24
     static let labelWidth: CGFloat = 76
     static let rowSpacing: CGFloat = 12
     static let sectionSpacing: CGFloat = 14
+    static let providerListHeight: CGFloat = 160
 }
 
 // MARK: - SettingsWindowController
@@ -130,10 +131,8 @@ private final class SettingsViewController: NSViewController {
     private let languageLabel = NSTextField(labelWithString: "")
     // Providers
     private let providersSubtitleLabel = NSTextField(labelWithString: "")
-    private let selectedProviderLabel = NSTextField(labelWithString: "")
-    private let providerEnableLabel = NSTextField(labelWithString: "")
-    private let selectedProviderPopUp = NSPopUpButton(frame: .zero, pullsDown: false)
-    private let providerCheckboxStack = NSStackView()
+    private let providersHelpLabel = NSTextField(wrappingLabelWithString: "")
+    private let providerListView = ProviderListSettingsView()
     // Buttons
     private let versionLabel = NSTextField(labelWithString: "")
     private let saveButton = NSButton(title: "", target: nil, action: nil)
@@ -150,7 +149,6 @@ private final class SettingsViewController: NSViewController {
     private var pendingHotkeyCode: UInt32 = 0
     private var pendingHotkeyModifiers: UInt32 = 0
     private var providerOptions: [ProviderSettingsOption] = []
-    private var providerCheckboxes: [ProviderID: NSButton] = [:]
 
     override func loadView() {
         view = NSView(frame: NSRect(x: 0, y: 0, width: Layout.windowWidth, height: Layout.windowHeight))
@@ -391,23 +389,18 @@ private final class SettingsViewController: NSViewController {
     private func setupProvidersTab() {
         providersSubtitleLabel.font = .systemFont(ofSize: 13, weight: .regular)
         providersSubtitleLabel.textColor = .secondaryLabelColor
+        providersSubtitleLabel.maximumNumberOfLines = 2
 
-        configureLabel(selectedProviderLabel)
-        selectedProviderPopUp.translatesAutoresizingMaskIntoConstraints = false
-        selectedProviderPopUp.target = self
-        selectedProviderPopUp.action = #selector(selectedProviderChanged)
-        let selectedProviderRow = makeRow(label: selectedProviderLabel, control: selectedProviderPopUp)
+        providersHelpLabel.font = .systemFont(ofSize: 11)
+        providersHelpLabel.textColor = .tertiaryLabelColor
+        providersHelpLabel.maximumNumberOfLines = 3
 
-        configureLabel(providerEnableLabel)
-        providerCheckboxStack.orientation = .vertical
-        providerCheckboxStack.alignment = .leading
-        providerCheckboxStack.spacing = 6
-        let enabledRow = makeRow(label: providerEnableLabel, control: providerCheckboxStack)
+        providerListView.translatesAutoresizingMaskIntoConstraints = false
 
-        let stack = NSStackView(views: [providersSubtitleLabel, selectedProviderRow, enabledRow])
+        let stack = NSStackView(views: [providersSubtitleLabel, providerListView, providersHelpLabel])
         stack.orientation = .vertical
         stack.alignment = .leading
-        stack.spacing = Layout.sectionSpacing
+        stack.spacing = 8
         stack.translatesAutoresizingMaskIntoConstraints = false
 
         providersContainer.addSubview(stack)
@@ -416,7 +409,9 @@ private final class SettingsViewController: NSViewController {
             stack.leadingAnchor.constraint(equalTo: providersContainer.leadingAnchor),
             stack.trailingAnchor.constraint(equalTo: providersContainer.trailingAnchor),
             stack.bottomAnchor.constraint(lessThanOrEqualTo: providersContainer.bottomAnchor),
-            selectedProviderPopUp.widthAnchor.constraint(greaterThanOrEqualToConstant: 180),
+            providerListView.leadingAnchor.constraint(equalTo: stack.leadingAnchor),
+            providerListView.trailingAnchor.constraint(equalTo: stack.trailingAnchor),
+            providerListView.heightAnchor.constraint(equalToConstant: Layout.providerListHeight),
         ])
     }
 
@@ -467,20 +462,7 @@ private final class SettingsViewController: NSViewController {
         guard !providerOptions.isEmpty else {
             return .empty
         }
-
-        let selectedIndex = selectedProviderPopUp.indexOfSelectedItem
-        let selectedID = providerOptions[safe: selectedIndex]?.id ?? providerOptions[0].id
-        var enabledIDs = Set(
-            providerCheckboxes.compactMap { id, button in
-                button.state == .on ? id : nil
-            }
-        )
-        enabledIDs.insert(selectedID)
-
-        return ProviderSettingsConfiguration(
-            selectedProviderID: selectedID,
-            enabledProviderIDs: enabledIDs
-        )
+        return providerListView.makeConfiguration()
     }
 
     private func applyLocalizedText() {
@@ -507,8 +489,7 @@ private final class SettingsViewController: NSViewController {
         languageLabel.stringValue = L.languageTitle
 
         providersSubtitleLabel.stringValue = L.providersSubtitle
-        selectedProviderLabel.stringValue = L.selectedProvider
-        providerEnableLabel.stringValue = L.enabledProviders
+        providersHelpLabel.stringValue = L.providersHelp
 
         versionLabel.stringValue = L.appVersion(AppMetadata.current.version)
         saveButton.title = L.save
@@ -538,20 +519,6 @@ private final class SettingsViewController: NSViewController {
         }
     }
 
-    @objc private func selectedProviderChanged() {
-        let configuration = currentProviderConfiguration()
-        reloadProviderControls(configuration: configuration)
-    }
-
-    @objc private func providerCheckboxChanged(_ sender: NSButton) {
-        guard sender.state == .off,
-              let selectedID = providerOptions[safe: selectedProviderPopUp.indexOfSelectedItem]?.id,
-              providerCheckboxes[selectedID] === sender else {
-            return
-        }
-        sender.state = .on
-    }
-
     private func selectLanguagePreference(_ preference: AppLanguagePreference) {
         let index = AppLanguagePreference.allCases.firstIndex(of: preference) ?? 0
         languagePopUp.selectItem(at: index)
@@ -567,35 +534,7 @@ private final class SettingsViewController: NSViewController {
     }
 
     private func reloadProviderControls(configuration: ProviderSettingsConfiguration) {
-        selectedProviderPopUp.removeAllItems()
-        for option in providerOptions {
-            selectedProviderPopUp.addItem(withTitle: option.displayName)
-        }
-
-        let selectedID = configuration.selectedProviderID.flatMap { configuredID in
-            providerOptions.contains { $0.id == configuredID } ? configuredID : nil
-        } ?? providerOptions.first?.id
-        if let selectedID,
-           let index = providerOptions.firstIndex(where: { $0.id == selectedID }) {
-            selectedProviderPopUp.selectItem(at: index)
-        }
-
-        for view in providerCheckboxStack.arrangedSubviews {
-            providerCheckboxStack.removeArrangedSubview(view)
-            view.removeFromSuperview()
-        }
-        providerCheckboxes.removeAll()
-
-        for option in providerOptions {
-            let checkbox = NSButton(
-                checkboxWithTitle: option.displayName,
-                target: self,
-                action: #selector(providerCheckboxChanged)
-            )
-            checkbox.state = configuration.isEnabled(option.id) || option.id == selectedID ? .on : .off
-            providerCheckboxStack.addArrangedSubview(checkbox)
-            providerCheckboxes[option.id] = checkbox
-        }
+        providerListView.configure(options: providerOptions, configuration: configuration)
     }
 
     @objc private func save() {

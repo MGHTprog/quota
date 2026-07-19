@@ -39,9 +39,9 @@
 "settings.language.english" = "English";
 "settings.language.simplifiedChinese" = "Simplified Chinese";
 
-"settings.providers.subtitle" = "Choose which provider Quota shows in the menu bar";
-"settings.providers.selected" = "Show";
-"settings.providers.enabled" = "Enabled";
+"settings.providers.subtitle" = "Enable providers for the menu popup (max %d). Drag to reorder.";
+"settings.providers.help" = "Checked providers appear as popup tabs in this order (left to right). The first one sits on the left; on Macs with a Touch Bar it is also shown there.";
+"settings.providers.primaryBadge" = "Primary";
 
 "validation.proxy.title" = "Invalid proxy address";
 "validation.proxy.message" = "Enter a complete proxy URL, such as http://127.0.0.1:7890 or socks5://127.0.0.1:1080.";

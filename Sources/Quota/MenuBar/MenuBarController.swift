@@ -9,8 +9,9 @@ final class MenuBarController: NSObject, QuotaServiceObserver {
     private let contentView = MenuBarLimitView(
         frame: NSRect(x: 0, y: 0, width: MenuBarLimitView.preferredSize.width, height: MenuBarLimitView.preferredSize.height)
     )
-    private var panel: NSPanel?
+    private var panel: KeyablePanel?
     private var closeEventMonitor: Any?
+    private var keyEventMonitor: Any?
     private var usesIconOnly = false
 
     init(service: QuotaService, showSettings: @escaping () -> Void) {
@@ -35,6 +36,7 @@ final class MenuBarController: NSObject, QuotaServiceObserver {
         contentView.onSettings = { [weak self] in self?.openSettings() }
         contentView.onRefresh = { [weak self] in self?.refresh() }
         contentView.onQuit = { [weak self] in self?.quit() }
+        contentView.onDismiss = { [weak self] in self?.closePanel() }
         contentView.onPreferredSizeChange = { [weak self] in
             self?.resizePanelToFitContent(reposition: true)
         }
@@ -61,20 +63,22 @@ final class MenuBarController: NSObject, QuotaServiceObserver {
         providerID: ProviderID,
         lastState: ProviderQuotaState?
     ) {
+        debugLog("[Quota] \(providerID.rawValue) refresh failed: \(error.localizedDescription)")
+        // Keep last good data when available; otherwise the panel shows neutral "--" rows.
+        // Do not surface raw network errors in the UI.
         if let lastState {
-            render(state: lastState, error: error)
+            render(state: lastState)
         } else {
             if providerID == service.primaryProviderID {
                 updateStatusLabel(remainingLabels: [], displayName: service.displayName(for: providerID))
             }
-            contentView.updateFailure(error, providerID: providerID)
-            resizePanelToFitContent(reposition: panel?.isVisible == true)
+            syncContentView()
         }
     }
 
     // MARK: - Rendering
 
-    private func render(state: ProviderQuotaState, error: Error? = nil) {
+    private func render(state: ProviderQuotaState) {
         let rows = state.windowsForCompactDisplay()
         // Keep one entry per row so a missing 5h window still shows as "--" (not dropped).
         let remainingLabels = rows.map { window -> String in
@@ -89,11 +93,6 @@ final class MenuBarController: NSObject, QuotaServiceObserver {
         )
 
         syncContentView()
-
-        if let error {
-            debugLog("[Quota] refresh failed: \(error.localizedDescription)")
-            contentView.updateFailure(error, providerID: state.providerID)
-        }
     }
 
     @objc private func refresh() {
@@ -183,18 +182,23 @@ final class MenuBarController: NSObject, QuotaServiceObserver {
         self.panel = panel
         resizePanelToFitContent(reposition: false)
         panel.setFrameOrigin(panelOrigin(for: panel, button: button))
-        panel.orderFrontRegardless()
+        // Become key so ⌘R / ⌘Q / ⌘, / Esc work while the popup is open.
+        NSApp.activate(ignoringOtherApps: true)
+        panel.makeKeyAndOrderFront(nil)
+        panel.makeFirstResponder(contentView)
         startCloseMonitor()
+        startKeyEventMonitor()
     }
 
     private func closePanel() {
         panel?.orderOut(nil)
         stopCloseMonitor()
+        stopKeyEventMonitor()
     }
 
-    private func makePanel() -> NSPanel {
+    private func makePanel() -> KeyablePanel {
         let size = contentView.intrinsicContentSize
-        let panel = NSPanel(
+        let panel = KeyablePanel(
             contentRect: NSRect(origin: .zero, size: size),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
@@ -205,8 +209,9 @@ final class MenuBarController: NSObject, QuotaServiceObserver {
         panel.isOpaque = false
         panel.hasShadow = true
         panel.level = .statusBar
-        panel.collectionBehavior = [.canJoinAllSpaces, .transient]
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
         panel.isReleasedWhenClosed = false
+        panel.hidesOnDeactivate = false
         return panel
     }
 
@@ -245,4 +250,32 @@ final class MenuBarController: NSObject, QuotaServiceObserver {
             self.closeEventMonitor = nil
         }
     }
+
+    /// Local monitor so shortcuts work even when the panel does not become first responder.
+    /// Also intercepts ⌘, which AppKit may treat as a preferences key equivalent.
+    private func startKeyEventMonitor() {
+        stopKeyEventMonitor()
+        keyEventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { [weak self] event in
+            guard let self, self.panel?.isVisible == true else { return event }
+            // Only keyDown carries the shortcut action.
+            guard event.type == .keyDown else { return event }
+            if self.contentView.handlePanelKeyEvent(event) {
+                return nil
+            }
+            return event
+        }
+    }
+
+    private func stopKeyEventMonitor() {
+        if let keyEventMonitor {
+            NSEvent.removeMonitor(keyEventMonitor)
+            self.keyEventMonitor = nil
+        }
+    }
+}
+
+/// Borderless status-item panel that can still become key for shortcuts.
+private final class KeyablePanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { false }
 }

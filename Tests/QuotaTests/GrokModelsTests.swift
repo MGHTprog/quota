@@ -10,22 +10,40 @@ import Testing
             currentPeriod: GrokUsagePeriod(end: reset),
             billingPeriodEnd: reset,
             productUsage: [GrokProductUsage(product: "GrokBuild")],
-            subscriptionTier: "X Premium+"
-        )
+            subscriptionTier: nil
+        ),
+        subscriptionTier: "X Premium+"
     )
 
+    #expect(response.displayPlan == "X Premium+")
+
     let state = try response.makeProviderState(
-        identity: ProviderIdentity(displayName: "Grok", plan: "X Premium+"),
+        identity: ProviderIdentity(displayName: "Grok", plan: response.displayPlan),
         now: Date(timeIntervalSince1970: 10)
     )
 
     #expect(state.providerID == ProviderID.grok)
+    #expect(state.identity.plan == "X Premium+")
     #expect(state.windows.count == 1)
     #expect(state.windows[0].id == GrokWindowID.weekly)
     #expect(state.windows[0].usedPercent == 25)
     #expect(state.windows[0].remainingPercent == 75)
     #expect(state.windows[0].resetsAt == reset)
     #expect(state.sourceLabel == "cli-billing")
+}
+
+@Test func grokDisplayPlanIgnoresProductName() {
+    let response = GrokBillingResponse(
+        config: GrokBillingConfig(
+            creditUsagePercent: 10,
+            currentPeriod: nil,
+            billingPeriodEnd: nil,
+            productUsage: [GrokProductUsage(product: "GrokBuild")],
+            subscriptionTier: nil
+        ),
+        subscriptionTier: nil
+    )
+    #expect(response.displayPlan == nil)
 }
 
 @Test func mapsGrokBillingUsingBillingPeriodEndFallback() throws {
@@ -37,7 +55,8 @@ import Testing
             billingPeriodEnd: reset,
             productUsage: nil,
             subscriptionTier: nil
-        )
+        ),
+        subscriptionTier: nil
     )
 
     let state = try response.makeProviderState(
@@ -56,7 +75,8 @@ import Testing
             billingPeriodEnd: nil,
             productUsage: nil,
             subscriptionTier: nil
-        )
+        ),
+        subscriptionTier: nil
     )
 
     #expect(throws: (any Error).self) {

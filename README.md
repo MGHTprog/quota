@@ -63,9 +63,8 @@ Do not install the raw `.build/release/Quota` executable directly. Notifications
 After launch, Quota appears in the macOS menu bar. Wait a few seconds for the first quota refresh.
 
 - Click the menu bar icon to view 5-hour, weekly, and reset credit details
-- Click `Refresh` or press `⌘R` to refresh manually
-- Click `Settings` to configure proxy, global hotkey, and language options
-- Click `Quit` or press `⌘Q` to exit
+- While the popup is open: `⌘R` refresh, `⌘,` settings, `⌘Q` quit, `Esc` dismiss
+- Click `Settings` to configure proxy, global hotkey, language, and enabled providers
 
 Touch Bar appears only when Terminal, ChatGPT, Codex, or IntelliJ IDEA is the active app.
 

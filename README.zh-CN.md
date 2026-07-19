@@ -69,9 +69,8 @@ ditto .build/package/Quota.app /Applications/Quota.app
 启动后菜单栏会出现 Quota 图标，稍等片刻自动获取数据。
 
 - 点击菜单栏图标查看 5 小时窗口、周限额和重置额度
-- 点击 `刷新` 或按 `⌘R` 手动刷新
-- 点击 `设置` 配置代理、全局快捷键和显示语言
-- 点击 `退出` 或按 `⌘Q` 退出
+- 弹窗打开时：`⌘R` 刷新，`⌘,` 设置，`⌘Q` 退出，`Esc` 关闭弹窗
+- 点击 `设置` 配置代理、全局快捷键、语言和启用的服务
 
 Touch Bar 只在 Terminal、ChatGPT、Codex 或 IntelliJ IDEA 前台时显示，切换到其他应用后会隐藏。
 

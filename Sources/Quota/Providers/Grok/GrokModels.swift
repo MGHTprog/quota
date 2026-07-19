@@ -5,6 +5,8 @@ import Foundation
 /// Decoded payload of `GET .../v1/billing?format=credits`.
 struct GrokBillingResponse: Decodable {
     var config: GrokBillingConfig
+    /// Present on some response envelopes (CLI billing logs).
+    var subscriptionTier: String?
 }
 
 struct GrokBillingConfig: Decodable {
@@ -21,6 +23,18 @@ struct GrokUsagePeriod: Decodable {
 
 struct GrokProductUsage: Decodable {
     var product: String?
+}
+
+extension GrokBillingResponse {
+    /// Subscription tier for the plan pill (e.g. "X Premium+").
+    ///
+    /// Do not fall back to `productUsage.product` — that is a product id like
+    /// `GrokBuild`, not a user-facing plan name.
+    var displayPlan: String? {
+        let raw = subscriptionTier ?? config.subscriptionTier
+        let trimmed = raw?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? nil : trimmed
+    }
 }
 
 enum GrokWindowID {

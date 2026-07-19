@@ -7,12 +7,12 @@ private extension ProviderID {
 }
 
 @MainActor
-@Test func primaryProviderUsesSelectedEnabledProvider() {
+@Test func primaryProviderUsesFirstEnabledInOrder() {
     let defaults = UserDefaults(suiteName: "QuotaServiceTests.selected")!
     defaults.removePersistentDomain(forName: "QuotaServiceTests.selected")
     let store = ProviderSettingsStore(defaults: defaults)
     store.configuration = ProviderSettingsConfiguration(
-        selectedProviderID: .testProvider,
+        providerOrder: [.testProvider, .codex],
         enabledProviderIDs: [.codex, .testProvider]
     )
 
@@ -45,12 +45,12 @@ private extension ProviderID {
 }
 
 @MainActor
-@Test func primaryProviderFallsBackWhenSelectedProviderIsDisabled() {
+@Test func primaryProviderSkipsDisabledProvidersInOrder() {
     let defaults = UserDefaults(suiteName: "QuotaServiceTests.fallback")!
     defaults.removePersistentDomain(forName: "QuotaServiceTests.fallback")
     let store = ProviderSettingsStore(defaults: defaults)
     store.configuration = ProviderSettingsConfiguration(
-        selectedProviderID: .testProvider,
+        providerOrder: [.testProvider, .codex],
         enabledProviderIDs: [.codex]
     )
 
@@ -63,6 +63,25 @@ private extension ProviderID {
     )
 
     #expect(service.primaryProviderID == ProviderID.codex)
+}
+
+@MainActor
+@Test func orderedEnabledProvidersRespectUserOrder() {
+    let configuration = ProviderSettingsConfiguration(
+        providerOrder: [.grok, .codex],
+        enabledProviderIDs: [.codex, .grok]
+    )
+    let registry = ProviderRegistry(providers: [
+        FakeProvider(id: .codex, displayName: "Codex"),
+        FakeProvider(id: .grok, displayName: "Grok"),
+    ])
+
+    let enabled = registry.enabledProviders(configuration: configuration).map(\.id)
+    #expect(enabled == [ProviderID.grok, ProviderID.codex])
+}
+
+@Test func providerDisplayLimitIsFive() {
+    #expect(ProviderDisplayLimits.maxEnabledCount == 5)
 }
 
 private final class FakeProvider: QuotaProvider {

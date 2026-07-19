@@ -5,15 +5,24 @@ final class MenuBarLimitView: NSView {
     private enum Layout {
         static let width: CGFloat = 260
         static let outerPadding: CGFloat = 12
-        static let tabHeight: CGFloat = 32
+        static let tabHeight: CGFloat = 30
+        /// Compact chip width — tabs size to content, not the full panel width.
+        static let tabChipWidth: CGFloat = 34
         static let tabGap: CGFloat = 6
-        static let cardGap: CGFloat = 10
+        /// Gap between provider cards (includes space for a clearer divider).
+        static let cardGap: CGFloat = 14
+        /// Small breathing room under the last quota row — not used to match other cards.
+        static let cardBottomPadding: CGFloat = 4
         static let footerHeight: CGFloat = 34
         static let iconSize: CGFloat = 28
         static let rowHeight: CGFloat = 44
         static let barHeight: CGFloat = 3.5
         static let lowThreshold: Double = 20
         static let midThreshold: Double = 45
+
+        static func cardHeight(rowCount: Int) -> CGFloat {
+            iconSize + 9 + rowHeight * CGFloat(max(1, rowCount)) + cardBottomPadding
+        }
     }
 
     private enum Palette {
@@ -21,13 +30,16 @@ final class MenuBarLimitView: NSView {
         static let surface = NSColor(calibratedWhite: 0.985, alpha: 0.72)
         static let stroke = NSColor(calibratedWhite: 0.76, alpha: 0.42)
         static let hairline = NSColor(calibratedWhite: 0.70, alpha: 0.20)
+        /// Stronger than `hairline` so provider sections separate clearly.
+        static let sectionDivider = NSColor(calibratedWhite: 0.52, alpha: 0.38)
         static let text = NSColor.secondaryLabelColor
         static let strongText = NSColor.labelColor
         static let secondaryText = NSColor.secondaryLabelColor
         static let mutedText = NSColor.tertiaryLabelColor
         static let track = NSColor(calibratedWhite: 0.80, alpha: 0.46)
-        static let selectedTab = NSColor(calibratedWhite: 0.99, alpha: 0.86)
-        static let selectedStroke = NSColor.controlAccentColor.withAlphaComponent(0.24)
+        static let selectedTab = NSColor(calibratedWhite: 1.0, alpha: 0.95)
+        static let selectedStroke = NSColor.controlAccentColor.withAlphaComponent(0.45)
+        static let unselectedTab = NSColor(calibratedWhite: 0.97, alpha: 0.55)
         static let codexGreen = NSColor(calibratedRed: 0.04, green: 0.62, blue: 0.22, alpha: 1)
     }
 
@@ -38,16 +50,18 @@ final class MenuBarLimitView: NSView {
     var onSettings: (() -> Void)?
     var onRefresh: (() -> Void)?
     var onQuit: (() -> Void)?
+    var onDismiss: (() -> Void)?
     /// Called when the panel should resize (e.g. switching All / single provider).
     var onPreferredSizeChange: (() -> Void)?
 
     private var iconCache: [String: NSImage] = [:]
     private var providerOptions: [ProviderSettingsOption] = []
     private var statesByProvider: [ProviderID: ProviderQuotaState] = [:]
-    private var errorsByProvider: [ProviderID: Error] = [:]
     private var selectedProviderID: ProviderID?
     private var tabRects: [(id: ProviderID?, rect: NSRect)] = []
     private var footerRects: [(action: FooterAction, rect: NSRect)] = []
+
+    override var acceptsFirstResponder: Bool { true }
 
     override var intrinsicContentSize: NSSize {
         NSSize(width: Layout.width, height: calculatedHeight)
@@ -56,7 +70,7 @@ final class MenuBarLimitView: NSView {
     private var calculatedHeight: CGFloat {
         let visibleOptions = selectedOptions
         let cardHeights = visibleOptions.reduce(CGFloat.zero) { total, option in
-            total + cardHeight(for: option.id)
+            total + Layout.cardHeight(rowCount: max(1, displayWindows(for: option).count))
         }
         let gaps = max(0, visibleOptions.count - 1)
         return Layout.outerPadding
@@ -93,23 +107,12 @@ final class MenuBarLimitView: NSView {
     func update(providers: [ProviderSettingsOption], states: [ProviderQuotaState]) {
         providerOptions = providers
         statesByProvider = Dictionary(uniqueKeysWithValues: states.map { ($0.providerID, $0) })
-        let providerIDs = Set(providerOptions.map(\.id))
-        errorsByProvider = errorsByProvider.filter { providerIDs.contains($0.key) }
-        for state in states {
-            errorsByProvider[state.providerID] = nil
-        }
 
         if let selectedProviderID,
            !providers.contains(where: { $0.id == selectedProviderID }) {
             self.selectedProviderID = nil
         }
 
-        invalidateIntrinsicContentSize()
-        needsDisplay = true
-    }
-
-    func updateFailure(_ error: Error, providerID: ProviderID) {
-        errorsByProvider[providerID] = error
         invalidateIntrinsicContentSize()
         needsDisplay = true
     }
@@ -156,6 +159,74 @@ final class MenuBarLimitView: NSView {
         }
     }
 
+    /// Panel shortcuts: ⌘, settings · ⌘R refresh · ⌘Q quit · Esc dismiss.
+    /// Prefer hardware key codes — `charactersIgnoringModifiers` is unreliable for "," across layouts/IMEs.
+    private enum PanelKeyCode {
+        static let escape: UInt16 = 53
+        static let r: UInt16 = 15
+        static let q: UInt16 = 12
+        static let comma: UInt16 = 43
+    }
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if handlePanelKeyEvent(event) {
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+
+    override func keyDown(with event: NSEvent) {
+        if handlePanelKeyEvent(event) {
+            return
+        }
+        super.keyDown(with: event)
+    }
+
+    @discardableResult
+    func handlePanelKeyEvent(_ event: NSEvent) -> Bool {
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+
+        if event.keyCode == PanelKeyCode.escape {
+            onDismiss?()
+            return true
+        }
+
+        // Allow only Command alone (ignore caps lock via deviceIndependentFlagsMask).
+        let commandOnly = flags.contains(.command)
+            && !flags.contains(.shift)
+            && !flags.contains(.option)
+            && !flags.contains(.control)
+        guard commandOnly else { return false }
+
+        switch event.keyCode {
+        case PanelKeyCode.comma:
+            // macOS Settings convention: ⌘,
+            onSettings?()
+            return true
+        case PanelKeyCode.r:
+            onRefresh?()
+            return true
+        case PanelKeyCode.q:
+            onQuit?()
+            return true
+        default:
+            // Fallback for unusual keyboard layouts that remapped letter keys only.
+            switch event.charactersIgnoringModifiers?.lowercased() {
+            case ",":
+                onSettings?()
+                return true
+            case "r":
+                onRefresh?()
+                return true
+            case "q":
+                onQuit?()
+                return true
+            default:
+                return false
+            }
+        }
+    }
+
     // MARK: - Drawing
 
     private func drawBackground() {
@@ -170,26 +241,41 @@ final class MenuBarLimitView: NSView {
 
     private func drawTabs() {
         let top = bounds.height - Layout.outerPadding
+        let y = top - Layout.tabHeight
+        // Fixed-size chips, left-aligned — do not stretch across the panel.
+        // Scales to more providers without each tab becoming a wide empty block.
+        let chipWidth = tabChipWidth()
         var x = Layout.outerPadding
-        let allWidth: CGFloat = 36
-        let allRect = NSRect(x: x, y: top - Layout.tabHeight, width: allWidth, height: Layout.tabHeight)
+
+        let allRect = NSRect(x: x, y: y, width: chipWidth, height: Layout.tabHeight)
         drawTab(rect: allRect, isSelected: selectedProviderID == nil, option: nil)
         tabRects.append((nil, allRect))
-        x += allWidth + Layout.tabGap
+        x += chipWidth + Layout.tabGap
 
-        let widths = providerTabWidths(availableX: bounds.width - Layout.outerPadding - x)
-        for (option, tabWidth) in zip(providerOptions, widths) {
-            let rect = NSRect(x: x, y: top - Layout.tabHeight, width: tabWidth, height: Layout.tabHeight)
+        for option in providerOptions {
+            let rect = NSRect(x: x, y: y, width: chipWidth, height: Layout.tabHeight)
             drawTab(rect: rect, isSelected: selectedProviderID == option.id, option: option)
             tabRects.append((option.id, rect))
-            x += tabWidth + Layout.tabGap
+            x += chipWidth + Layout.tabGap
         }
+    }
+
+    /// Prefer a comfortable chip size; shrink only when many providers would overflow.
+    private func tabChipWidth() -> CGFloat {
+        let count = CGFloat(providerOptions.count + 1)
+        let available = bounds.width - Layout.outerPadding * 2
+        let natural = count * Layout.tabChipWidth + max(0, count - 1) * Layout.tabGap
+        guard natural > available, count > 0 else {
+            return Layout.tabChipWidth
+        }
+        let gapTotal = max(0, count - 1) * Layout.tabGap
+        return max(28, floor((available - gapTotal) / count))
     }
 
     private func drawCards() {
         var y = bounds.height - Layout.outerPadding - Layout.tabHeight - 10
         for (index, option) in selectedOptions.enumerated() {
-            let height = cardHeight(for: option.id)
+            let height = Layout.cardHeight(rowCount: max(1, displayWindows(for: option).count))
             y -= height
             let rect = NSRect(
                 x: Layout.outerPadding,
@@ -243,34 +329,36 @@ final class MenuBarLimitView: NSView {
 
     private func drawTab(rect: NSRect, isSelected: Bool, option: ProviderSettingsOption?) {
         let path = NSBezierPath(roundedRect: rect, xRadius: 8, yRadius: 8)
-        (isSelected ? Palette.selectedTab : Palette.surface).setFill()
-        path.fill()
-        (isSelected ? Palette.selectedStroke : Palette.stroke).setStroke()
-        path.lineWidth = 1
-        path.stroke()
+        if isSelected {
+            Palette.selectedTab.setFill()
+            path.fill()
+            Palette.selectedStroke.setStroke()
+            path.lineWidth = 1
+            path.stroke()
+        } else {
+            Palette.unselectedTab.setFill()
+            path.fill()
+            Palette.stroke.setStroke()
+            path.lineWidth = 1
+            path.stroke()
+        }
 
         let iconSize: CGFloat = 15
         let iconRect = NSRect(
             x: rect.midX - iconSize / 2,
-            y: rect.midY - iconSize / 2 + 1.2,
+            y: rect.midY - iconSize / 2,
             width: iconSize,
             height: iconSize
         )
         drawTabIcon(option: option, rect: iconRect, isSelected: isSelected)
-
-        if let option {
-            let progress = statesByProvider[option.id].flatMap(firstAvailablePercent)
-            let barRect = NSRect(x: rect.minX + 8, y: rect.minY + 5, width: rect.width - 16, height: 2.5)
-            drawProgressBar(in: barRect, percent: progress, color: progress.map(barColor) ?? .tertiaryLabelColor)
-        }
     }
 
     private func drawProviderCard(option: ProviderSettingsOption, rect: NSRect) {
         let state = statesByProvider[option.id]
         let identity = state?.identity ?? ProviderIdentity(displayName: option.displayName, plan: nil)
-        // Use the provider's real windows (Codex always sends 2; Grok only weekly).
-        // Do not pad with empty rows — that leaves a fake "--" slot under Grok.
-        let windows = displayWindows(for: state)
+        // Only real product windows (Grok = weekly only; Codex = 5h + weekly).
+        // Do not invent empty quota rows for windows the provider does not have.
+        let windows = displayWindows(for: option)
 
         let headerY = rect.maxY - Layout.iconSize
         drawProviderIcon(option: option, rect: NSRect(
@@ -288,18 +376,9 @@ final class MenuBarLimitView: NSView {
         ))
 
         var y = headerY - 9
-        if let error = errorsByProvider[option.id], state == nil {
-            drawError(error, at: NSPoint(x: rect.minX, y: y + 4), width: rect.width)
-            return
-        }
-
         for window in windows {
             y -= Layout.rowHeight
             drawWindow(window, rect: NSRect(x: rect.minX, y: y, width: rect.width, height: Layout.rowHeight))
-        }
-
-        if let error = errorsByProvider[option.id] {
-            drawError(error, at: NSPoint(x: rect.minX, y: rect.minY + 2), width: rect.width)
         }
     }
 
@@ -440,16 +519,6 @@ final class MenuBarLimitView: NSView {
         title.draw(at: NSPoint(x: x, y: rect.midY - titleSize.height / 2), withAttributes: attributes)
     }
 
-    private func drawError(_ error: Error, at point: NSPoint, width: CGFloat) {
-        let text = "\(L.refreshFailedPrefix): \(error.localizedDescription)"
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 11, weight: .regular),
-            .foregroundColor: NSColor.systemRed
-        ]
-        let rect = NSRect(x: point.x, y: point.y, width: width, height: 28)
-        (text as NSString).draw(in: rect, withAttributes: attributes)
-    }
-
     private func drawPill(text: String, x: CGFloat, centerY: CGFloat, color: NSColor, backgroundAlpha: CGFloat) -> CGFloat {
         let attributes: [NSAttributedString.Key: Any] = [
             .font: NSFont.systemFont(ofSize: 9, weight: .medium),
@@ -464,28 +533,20 @@ final class MenuBarLimitView: NSView {
         return rect.maxX + 5
     }
 
-    private func cardHeight(for providerID: ProviderID) -> CGFloat {
-        if statesByProvider[providerID] == nil, errorsByProvider[providerID] != nil {
-            return 108
+    /// Menu-bar rows follow each provider's real windows.
+    /// Offline placeholders still match product shape (not a fake second Grok row).
+    private func displayWindows(for option: ProviderSettingsOption) -> [QuotaWindow] {
+        if let state = statesByProvider[option.id], !state.windows.isEmpty {
+            return state.windows
         }
-        let rows = CGFloat(max(1, displayWindows(for: statesByProvider[providerID]).count))
-        return Layout.iconSize + 9 + Layout.rowHeight * rows
-    }
 
-    /// Windows shown in a provider card. Prefer the real window list so single-window
-    /// providers (Grok weekly) do not get a blank second row.
-    private func displayWindows(for state: ProviderQuotaState?) -> [QuotaWindow] {
-        guard let state else {
-            return [.empty, .empty]
+        if option.id == .grok {
+            return [.unavailable(id: "weekly", title: L.weeklyTitle)]
         }
-        if state.windows.isEmpty {
-            return [.empty, .empty]
-        }
-        return state.windows
-    }
-
-    private func firstAvailablePercent(_ state: ProviderQuotaState) -> Double? {
-        state.windows.first(where: \.isAvailable)?.remainingPercent
+        return [
+            .unavailable(id: "fiveHour", title: L.fiveHourTitle),
+            .unavailable(id: "weekly", title: L.weeklyTitle)
+        ]
     }
 
     private func barColor(for percent: Double) -> NSColor {
@@ -500,11 +561,16 @@ final class MenuBarLimitView: NSView {
     }
 
     private func drawSectionSeparator(y: CGFloat) {
-        Palette.hairline.setStroke()
-        NSBezierPath.strokeLine(
-            from: NSPoint(x: Layout.outerPadding, y: y),
-            to: NSPoint(x: bounds.width - Layout.outerPadding, y: y)
+        // Slightly inset, thicker fill — more visible than a 1px hairline stroke.
+        let inset: CGFloat = 4
+        let rect = NSRect(
+            x: Layout.outerPadding + inset,
+            y: y - 0.5,
+            width: bounds.width - Layout.outerPadding * 2 - inset * 2,
+            height: 1
         )
+        Palette.sectionDivider.setFill()
+        rect.fill()
     }
 
     private func drawTabIcon(option: ProviderSettingsOption?, rect: NSRect, isSelected: Bool) {
@@ -557,20 +623,6 @@ final class MenuBarLimitView: NSView {
         NSColor(hex: option.accentColorHex) ?? .systemBlue
     }
 
-    private func providerTabWidths(availableX: CGFloat) -> [CGFloat] {
-        guard !providerOptions.isEmpty else { return [] }
-
-        let naturalWidths = providerOptions.map { _ -> CGFloat in
-            return 36
-        }
-        let totalGap = CGFloat(max(0, providerOptions.count - 1)) * Layout.tabGap
-        let naturalTotal = naturalWidths.reduce(0, +) + totalGap
-        guard naturalTotal > availableX else { return naturalWidths }
-
-        let scale = max(0.72, (availableX - totalGap) / naturalWidths.reduce(0, +))
-        return naturalWidths.map { max(36, floor($0 * scale)) }
-    }
-
     private func providerIcon(for option: ProviderSettingsOption) -> NSImage? {
         guard let iconResourceName = option.iconResourceName else {
             return nil
@@ -586,7 +638,7 @@ final class MenuBarLimitView: NSView {
     }
 
     private static func loadProviderIcon(named name: String) -> NSImage? {
-        for fileExtension in ["png", "svg"] {
+        for fileExtension in ["svg", "png"] {
             let url = Bundle.main.url(forResource: name, withExtension: fileExtension)
                 ?? Bundle.module.url(forResource: name, withExtension: fileExtension)
             if let image = url.flatMap(NSImage.init(contentsOf:)) {
