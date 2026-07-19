@@ -5,14 +5,29 @@ import Foundation
 /// One usage window shown in the UI (session, weekly, credits, …).
 ///
 /// `id` is stable within a provider so notifications can track thresholds per window.
-/// `title` should already be localized by the provider when mapping.
+/// Prefer `localizedTitle` in UI — do not rely on `title` remaining current after a language switch.
 struct QuotaWindow: Equatable, Sendable {
     var id: String
+    /// Fallback / seed title from the provider (may be stale if language changed).
     var title: String
     var usedPercent: Double
     var remainingPercent: Double
     var resetsAt: Date?
     var isAvailable: Bool
+
+    /// Title resolved for the current UI language from `id` when possible.
+    var localizedTitle: String {
+        let normalized = id.lowercased()
+        if normalized.contains("week") {
+            return L.weeklyTitle
+        }
+        if normalized.contains("five")
+            || normalized.contains("hour")
+            || normalized.contains("session") {
+            return L.fiveHourTitle
+        }
+        return title
+    }
 
     var resetText: String {
         guard isAvailable, let resetsAt else {
@@ -58,10 +73,33 @@ struct ProviderIdentity: Equatable, Sendable {
 
 /// Small provider-supplied labels shown next to the provider heading.
 ///
-/// Providers should map source-specific extras (credits, plan hints, account
-/// state) into badges instead of adding provider-specific fields here.
+/// Prefer structured kinds so the UI can localize at draw time (language switch
+/// without waiting for the next fetch).
 struct ProviderBadge: Equatable, Sendable {
-    var text: String
+    enum Kind: Equatable, Sendable {
+        case text(String)
+        case resetCredits(Int)
+    }
+
+    var kind: Kind
+
+    static func text(_ value: String) -> ProviderBadge {
+        ProviderBadge(kind: .text(value))
+    }
+
+    static func resetCredits(_ count: Int) -> ProviderBadge {
+        ProviderBadge(kind: .resetCredits(count))
+    }
+
+    /// Localized label for the current UI language.
+    var localizedText: String {
+        switch kind {
+        case .text(let value):
+            return value
+        case .resetCredits(let count):
+            return L.resetCreditsSuffix(count)
+        }
+    }
 }
 
 // MARK: - Snapshot

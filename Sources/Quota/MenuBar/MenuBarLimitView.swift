@@ -395,7 +395,13 @@ final class MenuBarLimitView: NSView {
             x = drawPill(text: plan, x: x, centerY: rect.midY, color: Palette.codexGreen, backgroundAlpha: 0.075)
         }
         for badge in badges.prefix(2) {
-            x = drawPill(text: badge.text, x: x, centerY: rect.midY, color: Palette.secondaryText, backgroundAlpha: 0.055)
+            x = drawPill(
+                text: badge.localizedText,
+                x: x,
+                centerY: rect.midY,
+                color: Palette.secondaryText,
+                backgroundAlpha: 0.055
+            )
         }
     }
 
@@ -429,7 +435,7 @@ final class MenuBarLimitView: NSView {
         let iconRect = NSRect(x: rect.minX, y: titleY + 1, width: 12, height: 12)
         drawWindowIcon(windowID: window.id, rect: iconRect)
 
-        window.title.draw(at: NSPoint(x: titleX, y: titleY), withAttributes: titleAttributes)
+        window.localizedTitle.draw(at: NSPoint(x: titleX, y: titleY), withAttributes: titleAttributes)
 
         let remainingSize = (L.remaining as NSString).size(withAttributes: remainingAttributes)
         let percentSize = (percentText as NSString).size(withAttributes: percentAttributes)

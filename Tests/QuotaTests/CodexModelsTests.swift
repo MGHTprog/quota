@@ -34,7 +34,8 @@ import Testing
     #expect(state.windows[1].usedPercent == 0)
     #expect(state.windows[1].remainingPercent == 100)
     #expect(state.badges.count == 1)
-    #expect(!state.badges[0].text.isEmpty)
+    #expect(state.badges[0].kind == .resetCredits(3))
+    #expect(state.badges[0].localizedText.contains("3"))
     #expect(state.updatedAt == Date(timeIntervalSince1970: 10))
 }
 

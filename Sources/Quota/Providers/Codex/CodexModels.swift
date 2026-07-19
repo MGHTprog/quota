@@ -84,7 +84,7 @@ extension GetAccountRateLimitsResponse {
         guard let availableCount = resetCredits?.availableCount else {
             return []
         }
-        return [ProviderBadge(text: L.resetCreditsSuffix(availableCount))]
+        return [.resetCredits(availableCount)]
     }
 
     /// Classifies a wire window as session (5h) vs weekly for mapping.

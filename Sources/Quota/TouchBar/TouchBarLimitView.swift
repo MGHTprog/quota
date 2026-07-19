@@ -101,10 +101,10 @@ private final class LimitRowView: NSView {
 
     func update(with window: QuotaWindow) {
         guard window.isAvailable else {
-            showPlaceholder(title: window.title)
+            showPlaceholder(title: window.localizedTitle)
             return
         }
-        titleLabel.stringValue = window.title
+        titleLabel.stringValue = window.localizedTitle
         percentLabel.stringValue = "\(L.remaining)\(Int(window.remainingPercent.rounded()))%"
         resetLabel.stringValue = window.resetText
 

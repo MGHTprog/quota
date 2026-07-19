@@ -205,7 +205,7 @@ final class QuotaNotificationManager: QuotaServiceObserver {
 
         content.title = L.lowQuotaTitle(
             providerName: providerName,
-            windowTitle: window.title,
+            windowTitle: window.localizedTitle,
             severity: severityLabel(severity)
         )
 
