@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-Quota 是一个轻量级 macOS 菜单栏应用，用于实时查看 [Codex](https://github.com/openai/codex) 的用量配额。
+Quota 是一个轻量级 macOS 菜单栏应用，用于查看 AI 编程额度 —— 支持 [Codex](https://github.com/openai/codex) 与 [Grok](https://x.ai)（Grok Build / CLI）。
 
 <p align="center">
   <img src="https://img.shields.io/badge/platform-macOS%2014%2B-blue" alt="macOS 14+">
@@ -11,31 +11,34 @@ Quota 是一个轻量级 macOS 菜单栏应用，用于实时查看 [Codex](http
 </p>
 
 > [!NOTE]
-> 使用前需要安装 Codex CLI、ChatGPT.app 或 Codex.app，并确保账户有可读取的 rate limit 配额数据。
+> **Codex：** 需要 Codex CLI、ChatGPT.app 或 Codex.app，且账户能返回 rate limit 数据。  
+> **Grok：** 需要已登录的 Grok CLI（`grok login`）。部分网络环境访问 Grok 计费接口时可能需要代理。
 
 ## 特性
 
-- 菜单栏展示 Codex 5 小时额度、周额度，以及账户可用的重置额度
-- Terminal、ChatGPT、Codex 或 IntelliJ IDEA 前台时在 Touch Bar 展示额度
-- 额度不足时发送 macOS 通知
-- 每 2 分钟自动刷新，也支持手动刷新
-- 支持 Codex app-server 连接代理配置
-- 支持全局快捷键打开菜单栏弹窗
-- 支持跟随系统、英文和简体中文语言切换
-- 以 accessory 模式运行，不占 Dock 栏
-- 通过 Codex `app-server` 读取数据，优先使用 `PATH` 中的 `codex`，找不到时依次回退到 ChatGPT.app 或 Codex.app 内置的 Codex
+- 菜单栏同时支持 **Codex**（5 小时 + 周限额、重置额度）与 **Grok**（Build 周额度）
+- 弹窗支持全部 / 单服务切换；设置中最多启用 5 个服务，可拖拽排序
+- 排序最前的已启用服务为优先服务（tab 靠左；有 Touch Bar 时显示在 Touch Bar）
+- 额度不足时按厂商、按窗口发送 macOS 通知
+- 约每 2 分钟自动刷新，也支持手动刷新
+- 代理设置（Codex app-server / Grok 请求均可使用）
+- 全局快捷键打开弹窗
+- 语言：跟随系统 / 英文 / 简体中文
+- Accessory 模式，不占 Dock
 
 ## 截图
 
+中文界面截图如下；英文界面见 [README.md](README.md)。
+
 ### 菜单栏
 
-![菜单栏配额视图](Docs/Images/menu-bar.png)
-
-![浅色菜单栏配额视图](Docs/Images/menu-bar-light.png)
+![菜单栏 Codex 与 Grok](Docs/Images/menu-bar.png)
 
 ### Touch Bar
 
 ![Touch Bar 配额视图](Docs/Images/touch-bar.jpg)
+
+> Touch Bar 仅在带 Touch Bar 的 Mac 上可用。无 Touch Bar 的机型请使用菜单栏弹窗。
 
 ### 额度通知
 
@@ -60,29 +63,35 @@ ditto .build/package/Quota.app /Applications/Quota.app
 
 如需开机自启：
 
-**系统设置 -> 通用 -> 登录项 -> 添加 Quota**
+**系统设置 → 通用 → 登录项 → 添加 Quota**
 
-不建议直接运行或复制 `.build/release/Quota` 裸二进制；通知权限、应用图标和菜单栏资源都依赖标准 `.app` 包结构。
+不建议直接运行或复制 `.build/release/Quota` 裸二进制；通知权限、应用图标和资源依赖标准 `.app` 包结构。
 
 ## 使用
 
 启动后菜单栏会出现 Quota 图标，稍等片刻自动获取数据。
 
-- 点击菜单栏图标查看 5 小时窗口、周限额和重置额度
-- 弹窗打开时：`⌘R` 刷新，`⌘,` 设置，`⌘Q` 退出，`Esc` 关闭弹窗
-- 点击 `设置` 配置代理、全局快捷键、语言和启用的服务
+- 点击菜单栏图标打开弹窗
+- 用 **全部** / 各服务图标切换视图
+- 弹窗打开时：`⌘R` 刷新 · `⌘,` 设置 · `⌘Q` 退出 · `Esc` 关闭
+- **设置 → 服务：** 勾选要启用的服务（最多 5 个），拖动排序；最前的已启用项为优先服务
 
-Touch Bar 只在 Terminal、ChatGPT、Codex 或 IntelliJ IDEA 前台时显示，切换到其他应用后会隐藏。
+### 支持的服务
+
+| 服务 | 数据来源 | 展示内容 |
+|------|----------|----------|
+| **Codex** | 本地 `codex app-server`（`account/rateLimits/read`） | 5 小时 + 周限额；有重置额度时显示 |
+| **Grok** | 本地 `~/.grok/auth.json` + Grok CLI 计费接口 | Grok Build 周额度 |
 
 ### 通知阈值
 
-默认在以下剩余额度阈值发送通知：
+默认在以下**剩余额度**阈值发送通知（各厂商、各窗口独立）：
 
 - 低于 20%：普通提醒
 - 低于 10%：紧急提醒
-- 低于 5%：严重不足提醒
+- 低于 5%：严重不足
 
-每个窗口、每个阈值只提醒一次；额度恢复到 50% 以上后会重置提醒状态。
+每个阈值每个窗口只提醒一次；剩余恢复到 50% 以上后可再次提醒。
 
 ## 打包
 
@@ -110,44 +119,47 @@ bash Scripts/package-dmg.sh
 .build/Quota-<version>.dmg
 ```
 
-DMG 默认包含固定 Finder 安装窗口布局：左侧为 `Quota.app`，右侧为 `Applications` 快捷入口。如果 CI 环境无法控制 Finder，会自动降级为默认布局但仍生成可用 DMG。
+DMG 默认包含固定 Finder 安装窗口布局：左侧为 `Quota.app`，右侧为 `Applications` 快捷入口。若 CI 无法控制 Finder，会降级为默认布局但仍生成可用 DMG。
 
 ## 工作原理
 
 ```text
-┌──────────────┐     JSON-RPC (stdio)     ┌──────────────┐
-│              │ ◄──────────────────────► │              │
-│    Quota     │   account/rateLimits/    │    Codex     │
-│              │         read             │ (app-server) │
-└──────┬───────┘                          └──────┬───────┘
-       │                                         │
-       ▼                                         ▼
- ┌──────────────────────────┐             ┌──────────────────────┐
- │ MenuBarController        │             │ TouchBarController   │
- │ + MenuBarLimitView       │             │ + TouchBarLimitView  │
- └──────────────────────────┘             └──────────────────────┘
+                    ┌─────────────────────────────┐
+                    │            Quota            │
+                    │     （菜单栏 + 设置）         │
+                    └───────┬───────────┬─────────┘
+                            │           │
+           JSON-RPC stdio   │           │  HTTPS + 本地登录
+           app-server       │           │  ~/.grok/auth.json
+                            ▼           ▼
+                   ┌──────────────┐  ┌──────────────────────────┐
+                   │    Codex     │  │  Grok CLI 计费接口         │
+                   │ (app-server) │  │  cli-chat-proxy.grok.com │
+                   └──────────────┘  └──────────────────────────┘
 ```
 
-Quota 会启动 Codex 的 `app-server` 子进程，通过 stdin/stdout 上的 JSON-RPC 读取配额数据；如果账户返回重置额度，也会一并展示。数据每 2 分钟刷新一次。
+- **Codex：** 启动本地 `app-server` 子进程，经 stdin/stdout 的 JSON-RPC 读取额度。优先使用 `PATH` 中的 `codex`，否则回退到 ChatGPT.app / Codex.app 内置二进制。
+- **Grok：** 读取 `grok login` 写入的 `~/.grok/auth.json`，请求与 Grok CLI `/usage` 相同的计费接口。
+- 数据约每 2 分钟刷新一次。
 
 ## 隐私
 
-Quota 通过 Codex `app-server` 在本地读取 Codex 配额数据，不会将配额数据或账户信息上传到任何第三方服务。
+Quota 在本地通过 CLI/登录态与对应服务端读取额度，不会把额度或账号信息上传到自有的第三方分析服务。
 
-代理、快捷键和语言设置由 macOS 应用偏好设置保存在本地。
+代理、快捷键、语言和服务设置保存在本机 macOS 应用偏好中。
 
 ## 常见问题
 
-- 菜单栏没有图标：请从 `Applications` 启动 `Quota.app`，不要直接运行 `.build/release/Quota` 裸二进制。
-- 没有配额数据：请确认已安装 Codex CLI、ChatGPT.app 或 Codex.app，并已登录拥有 rate limit 数据的账户。
-- 找不到 Codex：请确认 `codex` 在 `PATH` 中，或已将 `ChatGPT.app` 或 `Codex.app` 安装到 `/Applications`。
-- 没有通知：请在系统设置中检查 Quota 的 macOS 通知权限。
+- **菜单栏没有图标：** 请从 `Applications` 启动 `Quota.app`，不要直接运行 `.build/release/Quota`。
+- **没有 Codex 数据：** 确认已安装 Codex CLI / ChatGPT.app / Codex.app 并登录；`codex` 在 `PATH` 中，或应用在 `/Applications`。
+- **没有 Grok 数据：** 先执行 `grok login`；若请求超时，在设置里配置代理（部分网络环境需要）。
+- **没有通知：** 在系统设置中检查 Quota 的通知权限（需标准 `.app` 安装）。
 
 ## 系统要求
 
 - macOS 14 Sonoma 或更高版本
-- Codex CLI、ChatGPT.app 或 Codex.app
-- 拥有可读取 rate limit 配额数据的 Codex 账户
+- Codex：Codex CLI、ChatGPT.app 或 Codex.app + 可读 rate limit 的账户
+- Grok：已登录的 Grok CLI（`grok login`）
 
 ## 开发
 
@@ -169,7 +181,7 @@ swift run 2>&1 | grep "\[Quota\]"
 
 - 发现问题？请提交 [Issue](https://github.com/slightlee/quota/issues)。
 - 有好想法？欢迎提交 [Pull Request](https://github.com/slightlee/quota/pulls)。
-- 如果 Quota 对你有帮助，可以给项目一个 Star 支持。
+- 如果 Quota 对你有帮助，可以给项目一个 Star。
 
 ## 社区
 

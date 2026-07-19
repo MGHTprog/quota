@@ -2,7 +2,7 @@
 
 [简体中文](README.zh-CN.md)
 
-Quota is a lightweight macOS menu bar app for monitoring [Codex](https://github.com/openai/codex) rate limits.
+Quota is a lightweight macOS menu bar app for monitoring AI coding quota — [Codex](https://github.com/openai/codex) and [Grok](https://x.ai) (Grok Build / CLI).
 
 <p align="center">
   <img src="https://img.shields.io/badge/platform-macOS%2014%2B-blue" alt="macOS 14+">
@@ -11,21 +11,24 @@ Quota is a lightweight macOS menu bar app for monitoring [Codex](https://github.
 </p>
 
 > [!NOTE]
-> Quota requires Codex CLI, ChatGPT.app, or Codex.app, and your account must expose valid rate limit data.
+> **Codex:** requires Codex CLI, ChatGPT.app, or Codex.app, with an account that exposes rate limit data.  
+> **Grok:** requires Grok CLI signed in (`grok login`). Some networks need a proxy to reach Grok billing.
 
 ## Features
 
-- Menu bar quota overview for Codex 5-hour and weekly limits, plus reset credits when available
-- Touch Bar display when Terminal, ChatGPT, Codex, or IntelliJ IDEA is the active app
-- macOS notifications when quota is running low
+- Menu bar popup for **Codex** (5-hour + weekly limits, reset credits) and **Grok** (weekly Build credits)
+- Provider tabs: All / each enabled provider; enable up to 5 providers and drag to reorder in Settings
+- First enabled provider (top of the list) is primary for Touch Bar when available
+- macOS notifications when remaining quota is low (per provider / window)
 - Automatic refresh every 2 minutes, plus manual refresh
-- Proxy settings for Codex app-server connectivity
-- Global hotkey for opening the menu bar popover
-- Language switcher with System, English, and Simplified Chinese options
-- Accessory app mode: no Dock icon
-- Reads quota data through Codex `app-server`, preferring `codex` from `PATH`, then falling back to the copy bundled with ChatGPT.app or Codex.app
+- Proxy settings (useful for Codex app-server and Grok billing)
+- Global hotkey to open the menu bar popup
+- Languages: System, English, Simplified Chinese
+- Accessory mode: no Dock icon
 
 ## Screenshots
+
+English screenshots use the English UI. Chinese screenshots live in [README.zh-CN.md](README.zh-CN.md).
 
 ### Menu Bar
 
@@ -34,6 +37,12 @@ Quota is a lightweight macOS menu bar app for monitoring [Codex](https://github.
 ### Low Quota Notifications
 
 ![Low quota notifications](Docs/Images/notification-en.png)
+
+### Touch Bar
+
+![Touch Bar quota view](Docs/Images/touch-bar.jpg)
+
+> Touch Bar is only available on Macs that include one. On newer MacBooks without a Touch Bar, use the menu bar popup.
 
 ## Installation
 
@@ -54,29 +63,35 @@ Then launch `Quota.app` from `Applications`.
 
 To launch Quota at login:
 
-**System Settings -> General -> Login Items -> Add Quota**
+**System Settings → General → Login Items → Add Quota**
 
 Do not install the raw `.build/release/Quota` executable directly. Notifications, app icons, and bundled resources rely on the standard `.app` bundle structure.
 
 ## Usage
 
-After launch, Quota appears in the macOS menu bar. Wait a few seconds for the first quota refresh.
+After launch, Quota appears in the menu bar. Wait a few seconds for the first refresh.
 
-- Click the menu bar icon to view 5-hour, weekly, and reset credit details
-- While the popup is open: `⌘R` refresh, `⌘,` settings, `⌘Q` quit, `Esc` dismiss
-- Click `Settings` to configure proxy, global hotkey, language, and enabled providers
+- Click the menu bar icon to open the popup
+- Switch **All** / provider chips to filter the view
+- While the popup is open: `⌘R` refresh · `⌘,` settings · `⌘Q` quit · `Esc` dismiss
+- **Settings → Providers:** enable services (max 5), drag to reorder; the first enabled row is primary (leftmost tab; Touch Bar when present)
 
-Touch Bar appears only when Terminal, ChatGPT, Codex, or IntelliJ IDEA is the active app.
+### Providers
+
+| Provider | Data source | What you see |
+|----------|-------------|--------------|
+| **Codex** | Local `codex app-server` (`account/rateLimits/read`) | 5-hour + weekly windows; reset credits when available |
+| **Grok** | Local `~/.grok/auth.json` + Grok CLI billing API | Weekly usage pool for Grok Build |
 
 ### Notification Thresholds
 
-Quota sends low-quota notifications at these default remaining-percent thresholds:
+Default remaining-percent thresholds (each provider and window independently):
 
 - Below 20%: warning
 - Below 10%: urgent
 - Below 5%: critical
 
-Each threshold is notified once per quota window. Notification state resets after the remaining quota recovers above 50%.
+Each threshold fires once per window until remaining recovers above 50%.
 
 ## Packaging
 
@@ -109,39 +124,42 @@ The DMG includes a Finder installer layout with `Quota.app` on the left and an `
 ## How It Works
 
 ```text
-┌──────────────┐     JSON-RPC (stdio)     ┌──────────────┐
-│              │ ◄──────────────────────► │              │
-│    Quota     │   account/rateLimits/    │    Codex     │
-│              │         read             │ (app-server) │
-└──────┬───────┘                          └──────┬───────┘
-       │                                         │
-       ▼                                         ▼
- ┌──────────────────────────┐             ┌──────────────────────┐
- │ MenuBarController        │             │ TouchBarController   │
- │ + MenuBarLimitView       │             │ + TouchBarLimitView  │
- └──────────────────────────┘             └──────────────────────┘
+                    ┌─────────────────────────────┐
+                    │            Quota            │
+                    │     (menu bar + settings)   │
+                    └───────┬───────────┬─────────┘
+                            │           │
+           JSON-RPC stdio   │           │  HTTPS + local auth
+           app-server       │           │  ~/.grok/auth.json
+                            ▼           ▼
+                   ┌──────────────┐  ┌──────────────────────────┐
+                   │    Codex     │  │  Grok CLI billing API    │
+                   │ (app-server) │  │  cli-chat-proxy.grok.com │
+                   └──────────────┘  └──────────────────────────┘
 ```
 
-Quota starts Codex `app-server` as a child process and reads quota data, including reset credit availability when exposed by the account, through JSON-RPC over stdin/stdout. It refreshes quota data every 2 minutes.
+- **Codex:** starts a local `app-server` child process and reads rate limits over JSON-RPC (stdin/stdout). Prefers `codex` on `PATH`, then the binary bundled with ChatGPT.app or Codex.app.
+- **Grok:** reads the OIDC access token from `~/.grok/auth.json` (after `grok login`) and calls the same billing endpoint the Grok CLI uses for usage.
+- Data refreshes about every 2 minutes.
 
 ## Privacy
 
-Quota reads Codex rate limit data locally through Codex `app-server`. It does not upload quota data or account information to any third-party service.
+Quota reads quota data on your machine through local CLI/login state and provider endpoints. It does not upload quota or account data to any third-party analytics service of its own.
 
-Proxy, hotkey, and language settings are stored locally by macOS app preferences.
+Proxy, hotkey, language, and provider settings are stored locally in macOS app preferences.
 
 ## Troubleshooting
 
-- No menu bar icon: launch `Quota.app` from `Applications` instead of running the raw `.build/release/Quota` executable.
-- No quota data: make sure Codex CLI, ChatGPT.app, or Codex.app is installed and signed in with an account that exposes rate limit data.
-- Codex cannot be found: ensure `codex` is available in `PATH`, or install `ChatGPT.app` or `Codex.app` in `/Applications`.
-- No notifications: check macOS notification permissions for Quota in System Settings.
+- **No menu bar icon:** launch `Quota.app` from `Applications`, not the raw `.build/release/Quota` binary.
+- **No Codex data:** install Codex CLI, ChatGPT.app, or Codex.app; sign in with an account that exposes rate limits; ensure `codex` is on `PATH` or the app is in `/Applications`.
+- **No Grok data:** run `grok login` so `~/.grok/auth.json` exists; if requests time out, enable a proxy (Settings → Proxy) on restricted networks.
+- **No notifications:** allow notifications for Quota in System Settings (requires a proper `.app` bundle).
 
 ## Requirements
 
 - macOS 14 Sonoma or later
-- Codex CLI, ChatGPT.app, or Codex.app
-- A Codex account with rate limit data
+- For Codex: Codex CLI, ChatGPT.app, or Codex.app + account with rate limit data
+- For Grok: Grok CLI signed in (`grok login`)
 
 ## Development
 
