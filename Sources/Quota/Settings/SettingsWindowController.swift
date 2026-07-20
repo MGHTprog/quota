@@ -9,7 +9,8 @@ private enum Layout {
     static let labelWidth: CGFloat = 76
     static let rowSpacing: CGFloat = 12
     static let sectionSpacing: CGFloat = 14
-    static let providerListHeight: CGFloat = 160
+    /// Fallback only; live height comes from `ProviderListSettingsView.preferredHeight`.
+    static let providerListHeight: CGFloat = 156
 }
 
 // MARK: - SettingsWindowController
@@ -131,8 +132,10 @@ private final class SettingsViewController: NSViewController {
     private let languageLabel = NSTextField(labelWithString: "")
     // Providers
     private let providersSubtitleLabel = NSTextField(labelWithString: "")
+    private let providersSelectedCountLabel = NSTextField(labelWithString: "")
     private let providersHelpLabel = NSTextField(wrappingLabelWithString: "")
     private let providerListView = ProviderListSettingsView()
+    private var providerListHeightConstraint: NSLayoutConstraint?
     // Buttons
     private let versionLabel = NSTextField(labelWithString: "")
     private let saveButton = NSButton(title: "", target: nil, action: nil)
@@ -390,18 +393,41 @@ private final class SettingsViewController: NSViewController {
         providersSubtitleLabel.font = .systemFont(ofSize: 13, weight: .regular)
         providersSubtitleLabel.textColor = .secondaryLabelColor
         providersSubtitleLabel.maximumNumberOfLines = 2
+        providersSubtitleLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        providersSubtitleLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        providersSelectedCountLabel.font = .systemFont(ofSize: 13, weight: .regular)
+        providersSelectedCountLabel.textColor = .secondaryLabelColor
+        providersSelectedCountLabel.alignment = .right
+        providersSelectedCountLabel.setContentHuggingPriority(.required, for: .horizontal)
+
+        let header = NSStackView(views: [providersSubtitleLabel, providersSelectedCountLabel])
+        header.orientation = .horizontal
+        header.alignment = .firstBaseline
+        header.distribution = .fill
+        header.spacing = 12
+        header.translatesAutoresizingMaskIntoConstraints = false
 
         providersHelpLabel.font = .systemFont(ofSize: 11)
         providersHelpLabel.textColor = .tertiaryLabelColor
         providersHelpLabel.maximumNumberOfLines = 3
 
         providerListView.translatesAutoresizingMaskIntoConstraints = false
+        providerListView.onChange = { [weak self] in
+            self?.updateProvidersSelectedCount()
+            self?.updateProviderListHeight()
+        }
 
-        let stack = NSStackView(views: [providersSubtitleLabel, providerListView, providersHelpLabel])
+        let stack = NSStackView(views: [header, providerListView, providersHelpLabel])
         stack.orientation = .vertical
         stack.alignment = .leading
-        stack.spacing = 8
+        stack.spacing = 10
         stack.translatesAutoresizingMaskIntoConstraints = false
+
+        let heightConstraint = providerListView.heightAnchor.constraint(
+            equalToConstant: Layout.providerListHeight
+        )
+        providerListHeightConstraint = heightConstraint
 
         providersContainer.addSubview(stack)
         NSLayoutConstraint.activate([
@@ -409,10 +435,23 @@ private final class SettingsViewController: NSViewController {
             stack.leadingAnchor.constraint(equalTo: providersContainer.leadingAnchor),
             stack.trailingAnchor.constraint(equalTo: providersContainer.trailingAnchor),
             stack.bottomAnchor.constraint(lessThanOrEqualTo: providersContainer.bottomAnchor),
+            header.leadingAnchor.constraint(equalTo: stack.leadingAnchor),
+            header.trailingAnchor.constraint(equalTo: stack.trailingAnchor),
             providerListView.leadingAnchor.constraint(equalTo: stack.leadingAnchor),
             providerListView.trailingAnchor.constraint(equalTo: stack.trailingAnchor),
-            providerListView.heightAnchor.constraint(equalToConstant: Layout.providerListHeight),
+            heightConstraint,
         ])
+    }
+
+    private func updateProvidersSelectedCount() {
+        providersSelectedCountLabel.stringValue = L.providersSelectedCount(
+            selected: providerListView.selectedCount,
+            max: providerListView.maxSelectableCount
+        )
+    }
+
+    private func updateProviderListHeight() {
+        providerListHeightConstraint?.constant = providerListView.preferredHeight
     }
 
     private func configureLabel(_ label: NSTextField) {
@@ -490,6 +529,7 @@ private final class SettingsViewController: NSViewController {
 
         providersSubtitleLabel.stringValue = L.providersSubtitle
         providersHelpLabel.stringValue = L.providersHelp
+        updateProvidersSelectedCount()
 
         versionLabel.stringValue = L.appVersion(AppMetadata.current.version)
         saveButton.title = L.save

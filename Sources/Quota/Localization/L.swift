@@ -41,11 +41,12 @@ enum L {
     static var clickToRecordHotkey: String { tr(.clickToRecordHotkey) }
 
     static var languageSubtitle: String { tr(.languageSubtitle) }
-    static var providersSubtitle: String {
-        tr(.providersSubtitle, ProviderDisplayLimits.maxEnabledCount)
-    }
+    static var providersSubtitle: String { tr(.providersSubtitle) }
     static var providersHelp: String { tr(.providersHelp) }
-    static var providerPrimaryBadge: String { tr(.providerPrimaryBadge) }
+    static func providersSelectedCount(selected: Int, max: Int) -> String {
+        tr(.providersSelectedCount, selected, max)
+    }
+    static var providersDragHint: String { tr(.providersDragHint) }
 
     static var invalidProxyTitle: String { tr(.invalidProxyTitle) }
     static var invalidProxyMessage: String { tr(.invalidProxyMessage) }

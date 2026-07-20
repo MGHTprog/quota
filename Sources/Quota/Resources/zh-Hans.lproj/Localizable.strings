@@ -40,9 +40,10 @@
 "settings.language.english" = "English";
 "settings.language.simplifiedChinese" = "简体中文";
 
-"settings.providers.subtitle" = "勾选要在弹窗中显示的服务（最多 %d 个），拖动可排序";
-"settings.providers.help" = "勾选的会出现在弹窗顶部 tab，并按此顺序从左到右排列。排最前的会靠左显示；有 Touch Bar 时也会显示在 Touch Bar。";
-"settings.providers.primaryBadge" = "优先";
+"settings.providers.subtitle" = "选择要显示在弹窗中的服务，拖动可调整顺序";
+"settings.providers.help" = "服务将按此顺序显示在弹窗顶部，并同步显示在 Touch Bar。";
+"settings.providers.selectedCount" = "已选择 %d/%d";
+"settings.providers.dragHint" = "拖动排序";
 
 "validation.proxy.title" = "代理地址无效";
 "validation.proxy.message" = "请输入完整的代理地址，例如 http://127.0.0.1:7890 或 socks5://127.0.0.1:1080。";

@@ -44,7 +44,8 @@ enum LocalizationKey: String {
 
     case providersSubtitle = "settings.providers.subtitle"
     case providersHelp = "settings.providers.help"
-    case providerPrimaryBadge = "settings.providers.primaryBadge"
+    case providersSelectedCount = "settings.providers.selectedCount"
+    case providersDragHint = "settings.providers.dragHint"
 
     case invalidProxyTitle = "validation.proxy.title"
     case invalidProxyMessage = "validation.proxy.message"

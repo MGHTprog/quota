@@ -40,9 +40,10 @@
 "settings.language.english" = "English";
 "settings.language.simplifiedChinese" = "Simplified Chinese";
 
-"settings.providers.subtitle" = "Enable providers for the menu popup (max %d). Drag to reorder.";
-"settings.providers.help" = "Checked providers appear as popup tabs in this order (left to right). The first one sits on the left; on Macs with a Touch Bar it is also shown there.";
-"settings.providers.primaryBadge" = "Primary";
+"settings.providers.subtitle" = "Choose which services appear in the popup. Drag to reorder.";
+"settings.providers.help" = "Services appear as popup tabs in this order, and on the Touch Bar when available.";
+"settings.providers.selectedCount" = "Selected %d/%d";
+"settings.providers.dragHint" = "Drag to reorder";
 
 "validation.proxy.title" = "Invalid proxy address";
 "validation.proxy.message" = "Enter a complete proxy URL, such as http://127.0.0.1:7890 or socks5://127.0.0.1:1080.";
