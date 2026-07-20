@@ -16,13 +16,13 @@ Quota is a lightweight macOS menu bar app for monitoring AI coding quota — [Co
 
 ## Features
 
-- Menu bar popup for **Codex** (5-hour + weekly limits, reset credits) and **Grok** (weekly Build credits)
-- Provider tabs: All / each enabled provider; enable up to 5 providers and drag to reorder in Settings
-- First enabled provider (top of the list) is primary for Touch Bar when available
+- Menu bar popup for **Codex** (5-hour + weekly limits, reset credits when available) and **Grok** (weekly usage pool)
+- Provider filter tabs: All / each enabled provider; enable up to 5 providers and drag to reorder in Settings
+- First enabled provider in the list is primary: leftmost provider tab, status-item summary, and Touch Bar when available
 - macOS notifications when remaining quota is low (per provider / window)
 - Automatic refresh every 2 minutes, plus manual refresh
 - Proxy settings (useful for Codex app-server and Grok billing)
-- Global hotkey to open the menu bar popup
+- Global hotkey to open or close the menu bar popup (same as clicking the status item)
 - Languages: System, English, Simplified Chinese
 - Accessory mode: no Dock icon
 
@@ -32,17 +32,23 @@ English screenshots use the English UI. Chinese screenshots live in [README.zh-C
 
 ### Menu Bar
 
-![Menu bar quota view](Docs/Images/menu-bar-en.png)
+Light mode:
 
-### Low Quota Notifications
+![Menu bar quota view (light)](Docs/Images/menu-bar-en.png)
 
-![Low quota notifications](Docs/Images/notification-en.png)
+Dark mode:
+
+![Menu bar quota view (dark)](Docs/Images/menu-bar-en-dark.png)
 
 ### Touch Bar
 
 ![Touch Bar quota view](Docs/Images/touch-bar.jpg)
 
-> Touch Bar is only available on Macs that include one. On newer MacBooks without a Touch Bar, use the menu bar popup.
+> Touch Bar is only available on Macs that include one. On newer MacBooks without a Touch Bar, use the menu bar popup. The Touch Bar strip layout may differ slightly from the menu bar popup.
+
+### Low Quota Notifications
+
+![Low quota notifications](Docs/Images/notification-en.png)
 
 ## Installation
 
@@ -71,17 +77,17 @@ Do not install the raw `.build/release/Quota` executable directly. Notifications
 
 After launch, Quota appears in the menu bar. Wait a few seconds for the first refresh.
 
-- Click the menu bar icon to open the popup
-- Switch **All** / provider chips to filter the view
+- Click the menu bar icon (or the global hotkey) to open or close the popup
+- Switch **All** / provider icons at the top to filter the view
 - While the popup is open: `⌘R` refresh · `⌘,` settings · `⌘Q` quit · `Esc` dismiss
-- **Settings → Providers:** enable services (max 5), drag to reorder; the first enabled row is primary (leftmost tab; Touch Bar when present)
+- **Settings → Providers:** enable services (max 5; click a row or the checkbox), drag to reorder; the first enabled row is primary
 
 ### Providers
 
 | Provider | Data source | What you see |
 |----------|-------------|--------------|
 | **Codex** | Local `codex app-server` (`account/rateLimits/read`) | 5-hour + weekly windows; reset credits when available |
-| **Grok** | Local `~/.grok/auth.json` + Grok CLI billing API | Weekly usage pool for Grok Build |
+| **Grok** | Local `~/.grok/auth.json` + Grok CLI billing API | Weekly usage window (same source as Grok CLI `/usage`) |
 
 ### Notification Thresholds
 

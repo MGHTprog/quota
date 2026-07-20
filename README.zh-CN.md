@@ -16,13 +16,13 @@ Quota 是一个轻量级 macOS 菜单栏应用，用于查看 AI 编程额度 �
 
 ## 特性
 
-- 菜单栏同时支持 **Codex**（5 小时 + 周限额、重置额度）与 **Grok**（Build 周额度）
-- 弹窗支持全部 / 单服务切换；设置中最多启用 5 个服务，可拖拽排序
-- 排序最前的已启用服务为优先服务（tab 靠左；有 Touch Bar 时显示在 Touch Bar）
+- 菜单栏同时支持 **Codex**（5 小时 + 周限额，有重置额度时显示）与 **Grok**（周额度）
+- 弹窗顶部可切换「全部 / 各服务」；设置中最多启用 5 个服务，可拖拽排序
+- 排序最前的已启用服务为优先服务（服务 tab 靠左、状态栏摘要、有 Touch Bar 时也显示在 Touch Bar）
 - 额度不足时按厂商、按窗口发送 macOS 通知
 - 约每 2 分钟自动刷新，也支持手动刷新
 - 代理设置（Codex app-server / Grok 请求均可使用）
-- 全局快捷键打开弹窗
+- 全局快捷键打开或关闭弹窗（与点击菜单栏图标相同）
 - 语言：跟随系统 / 英文 / 简体中文
 - Accessory 模式，不占 Dock
 
@@ -32,13 +32,19 @@ Quota 是一个轻量级 macOS 菜单栏应用，用于查看 AI 编程额度 �
 
 ### 菜单栏
 
-![菜单栏 Codex 与 Grok](Docs/Images/menu-bar.png)
+浅色模式：
+
+![菜单栏弹窗（浅色）](Docs/Images/menu-bar-light.png)
+
+深色模式：
+
+![菜单栏弹窗（深色）](Docs/Images/menu-bar.png)
 
 ### Touch Bar
 
 ![Touch Bar 配额视图](Docs/Images/touch-bar.jpg)
 
-> Touch Bar 仅在带 Touch Bar 的 Mac 上可用。无 Touch Bar 的机型请使用菜单栏弹窗。
+> Touch Bar 仅在带 Touch Bar 的 Mac 上可用。无 Touch Bar 的机型请使用菜单栏弹窗。Touch Bar 条带布局可能与菜单栏弹窗略有差异。
 
 ### 额度通知
 
@@ -71,17 +77,17 @@ ditto .build/package/Quota.app /Applications/Quota.app
 
 启动后菜单栏会出现 Quota 图标，稍等片刻自动获取数据。
 
-- 点击菜单栏图标打开弹窗
-- 用 **全部** / 各服务图标切换视图
+- 点击菜单栏图标（或全局快捷键）打开或关闭弹窗
+- 用顶部 **全部** / 各服务图标切换视图
 - 弹窗打开时：`⌘R` 刷新 · `⌘,` 设置 · `⌘Q` 退出 · `Esc` 关闭
-- **设置 → 服务：** 勾选要启用的服务（最多 5 个），拖动排序；最前的已启用项为优先服务
+- **设置 → 服务：** 启用服务（最多 5 个，可点整行或勾选框），拖动排序；最前的已启用项为优先服务
 
 ### 支持的服务
 
 | 服务 | 数据来源 | 展示内容 |
 |------|----------|----------|
 | **Codex** | 本地 `codex app-server`（`account/rateLimits/read`） | 5 小时 + 周限额；有重置额度时显示 |
-| **Grok** | 本地 `~/.grok/auth.json` + Grok CLI 计费接口 | Grok Build 周额度 |
+| **Grok** | 本地 `~/.grok/auth.json` + Grok CLI 计费接口 | 周额度窗口（与 Grok CLI `/usage` 同源） |
 
 ### 通知阈值
 
