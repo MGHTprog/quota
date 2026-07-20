@@ -40,7 +40,7 @@
 "settings.language.english" = "English";
 "settings.language.simplifiedChinese" = "Simplified Chinese";
 
-"settings.providers.subtitle" = "Choose which services appear in the popup. Drag to reorder.";
+"settings.providers.subtitle" = "Choose services for the popup. Drag to reorder.";
 "settings.providers.help" = "Services appear as popup tabs in this order, and on the Touch Bar when available.";
 "settings.providers.selectedCount" = "Selected %d/%d";
 "settings.providers.dragHint" = "Drag to reorder";

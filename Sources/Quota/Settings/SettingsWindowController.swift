@@ -393,24 +393,28 @@ private final class SettingsViewController: NSViewController {
         providersSubtitleLabel.font = .systemFont(ofSize: 13, weight: .regular)
         providersSubtitleLabel.textColor = .secondaryLabelColor
         providersSubtitleLabel.maximumNumberOfLines = 2
+        providersSubtitleLabel.lineBreakMode = .byWordWrapping
         providersSubtitleLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
         providersSubtitleLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
         providersSelectedCountLabel.font = .systemFont(ofSize: 13, weight: .regular)
         providersSelectedCountLabel.textColor = .secondaryLabelColor
         providersSelectedCountLabel.alignment = .right
+        // Keep "Selected 2/5" intact on the trailing edge; never let the subtitle crush it.
         providersSelectedCountLabel.setContentHuggingPriority(.required, for: .horizontal)
+        providersSelectedCountLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
 
         let header = NSStackView(views: [providersSubtitleLabel, providersSelectedCountLabel])
         header.orientation = .horizontal
         header.alignment = .firstBaseline
         header.distribution = .fill
-        header.spacing = 12
+        header.spacing = 16
         header.translatesAutoresizingMaskIntoConstraints = false
 
         providersHelpLabel.font = .systemFont(ofSize: 11)
         providersHelpLabel.textColor = .tertiaryLabelColor
         providersHelpLabel.maximumNumberOfLines = 3
+        providersHelpLabel.lineBreakMode = .byWordWrapping
 
         providerListView.translatesAutoresizingMaskIntoConstraints = false
         providerListView.onChange = { [weak self] in
@@ -418,9 +422,10 @@ private final class SettingsViewController: NSViewController {
             self?.updateProviderListHeight()
         }
 
+        // `.width` so header / list / help all span the full settings column.
         let stack = NSStackView(views: [header, providerListView, providersHelpLabel])
         stack.orientation = .vertical
-        stack.alignment = .leading
+        stack.alignment = .width
         stack.spacing = 10
         stack.translatesAutoresizingMaskIntoConstraints = false
 
@@ -435,10 +440,6 @@ private final class SettingsViewController: NSViewController {
             stack.leadingAnchor.constraint(equalTo: providersContainer.leadingAnchor),
             stack.trailingAnchor.constraint(equalTo: providersContainer.trailingAnchor),
             stack.bottomAnchor.constraint(lessThanOrEqualTo: providersContainer.bottomAnchor),
-            header.leadingAnchor.constraint(equalTo: stack.leadingAnchor),
-            header.trailingAnchor.constraint(equalTo: stack.trailingAnchor),
-            providerListView.leadingAnchor.constraint(equalTo: stack.leadingAnchor),
-            providerListView.trailingAnchor.constraint(equalTo: stack.trailingAnchor),
             heightConstraint,
         ])
     }

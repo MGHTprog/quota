@@ -82,11 +82,10 @@ final class ProviderListSettingsView: NSView {
         if #available(macOS 11.0, *) {
             cardView.layer?.cornerCurve = .continuous
         }
-        cardView.layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
         cardView.layer?.borderWidth = 1
-        cardView.layer?.borderColor = NSColor.separatorColor.withAlphaComponent(0.35).cgColor
         cardView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(cardView)
+        updateCardChrome()
 
         stack.orientation = .vertical
         stack.alignment = .width
@@ -115,8 +114,25 @@ final class ProviderListSettingsView: NSView {
 
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
-        cardView.layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
-        cardView.layer?.borderColor = NSColor.separatorColor.withAlphaComponent(0.35).cgColor
+        updateCardChrome()
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        // Window appearance is reliable after attach; resolve dynamic colors again.
+        updateCardChrome()
+    }
+
+    /// CALayer needs a resolved CGColor — plain `NSColor.controlBackgroundColor.cgColor`
+    /// freezes the light-mode value and leaves a white card in dark mode.
+    private func updateCardChrome() {
+        guard let layer = cardView.layer else { return }
+        let appearance = effectiveAppearance
+        appearance.performAsCurrentDrawingAppearance {
+            // Slightly elevated surface over the settings window chrome.
+            layer.backgroundColor = NSColor.controlBackgroundColor.cgColor
+            layer.borderColor = NSColor.separatorColor.withAlphaComponent(0.45).cgColor
+        }
     }
 
     private func rebuildRows() {
@@ -274,13 +290,16 @@ private final class ProviderRowView: NSView, NSDraggingSource {
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
 
         handleView.imageScaling = .scaleProportionallyDown
-        handleView.contentTintColor = NSColor.secondaryLabelColor.withAlphaComponent(0.55)
+        // Full secondary label (not 0.55 alpha) so grips stay visible on light white cards.
+        handleView.contentTintColor = .secondaryLabelColor
         if let symbol = NSImage(
             systemSymbolName: "line.3.horizontal",
             accessibilityDescription: L.providersDragHint
         ) {
-            let config = NSImage.SymbolConfiguration(pointSize: 11, weight: .regular)
-            handleView.image = symbol.withSymbolConfiguration(config)
+            let config = NSImage.SymbolConfiguration(pointSize: 12, weight: .medium)
+            let image = symbol.withSymbolConfiguration(config) ?? symbol
+            image.isTemplate = true
+            handleView.image = image
         }
         handleView.toolTip = L.providersDragHint
         handleView.translatesAutoresizingMaskIntoConstraints = false
