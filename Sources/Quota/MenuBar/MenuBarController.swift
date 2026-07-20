@@ -108,9 +108,9 @@ final class MenuBarController: NSObject, QuotaServiceObserver {
         showSettings()
     }
 
-    /// Programmatically opens the status-item panel (global hotkey entry point).
+    /// Global hotkey entry: same as clicking the status item (open / close).
     func showMenu() {
-        showPanel()
+        togglePanel()
     }
 
     @objc private func quit() {
