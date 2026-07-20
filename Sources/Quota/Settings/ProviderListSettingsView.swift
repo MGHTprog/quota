@@ -226,9 +226,8 @@ final class ProviderListSettingsView: NSView {
     private static func loadIcon(named name: String?, size: CGFloat) -> NSImage? {
         guard let name else { return nil }
         for ext in ["svg", "png"] {
-            let url = Bundle.main.url(forResource: name, withExtension: ext)
-                ?? Bundle.module.url(forResource: name, withExtension: ext)
-            if let image = url.flatMap(NSImage.init(contentsOf:)) {
+            if let url = ResourceBundle.url(forResource: name, withExtension: ext),
+               let image = NSImage(contentsOf: url) {
                 image.size = NSSize(width: size, height: size)
                 return image
             }

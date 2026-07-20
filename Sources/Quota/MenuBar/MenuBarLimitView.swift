@@ -883,9 +883,8 @@ final class MenuBarLimitView: NSView {
 
     private static func loadProviderIcon(named name: String) -> NSImage? {
         for fileExtension in ["svg", "png"] {
-            let url = Bundle.main.url(forResource: name, withExtension: fileExtension)
-                ?? Bundle.module.url(forResource: name, withExtension: fileExtension)
-            if let image = url.flatMap(NSImage.init(contentsOf:)) {
+            if let url = ResourceBundle.url(forResource: name, withExtension: fileExtension),
+               let image = NSImage(contentsOf: url) {
                 return image
             }
         }

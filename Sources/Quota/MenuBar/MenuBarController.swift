@@ -126,11 +126,8 @@ final class MenuBarController: NSObject, QuotaServiceObserver {
     }
 
     private func loadStatusImage() -> NSImage? {
-        let imageURL = Bundle.main
-            .url(forResource: "MenuBarIcon", withExtension: "png")
-            ?? Bundle.module.url(forResource: "MenuBarIcon", withExtension: "png")
-
-        guard let image = imageURL.flatMap(NSImage.init(contentsOf:)) else {
+        guard let imageURL = ResourceBundle.url(forResource: "MenuBarIcon", withExtension: "png"),
+              let image = NSImage(contentsOf: imageURL) else {
             return nil
         }
 

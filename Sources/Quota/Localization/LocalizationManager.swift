@@ -37,10 +37,15 @@ final class LocalizationManager {
     }
 
     private func bundle(for language: AppLanguage) -> Bundle? {
-        if let packagedBundleURL = Bundle.main.resourceURL?.appendingPathComponent("Quota_Quota.bundle"),
-           let packagedBundle = Bundle(url: packagedBundleURL),
-           let path = packagedBundle.path(forResource: language.rawValue, ofType: "lproj") {
+        // Prefer packaged `Quota_Quota.bundle` (release .app); avoid `Bundle.module`
+        // there — its SPM accessor can assert when the layout differs.
+        if let packaged = ResourceBundle.packagedBundle,
+           let path = packaged.path(forResource: language.rawValue, ofType: "lproj") {
             return Bundle(path: path)
+        }
+
+        if Bundle.main.bundleURL.pathExtension.lowercased() == "app" {
+            return nil
         }
 
         guard let path = Bundle.module.path(forResource: language.rawValue, ofType: "lproj") else {
