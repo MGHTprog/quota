@@ -17,6 +17,7 @@ enum L {
     static var weeklyTitle: String { tr(.weeklyTitle) }
     static var remaining: String { tr(.remaining) }
     static var reset: String { tr(.reset) }
+    static var noData: String { tr(.noData) }
     static func resetCreditsSuffix(_ count: Int) -> String { tr(.resetCreditsSuffix, count) }
 
     static var proxy: String { tr(.proxy) }

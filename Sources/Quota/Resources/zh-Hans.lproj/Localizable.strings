@@ -9,6 +9,7 @@
 "quota.window.weekly" = "周限额";
 "quota.remaining" = "剩余";
 "quota.reset" = "重置";
+"quota.window.noData" = "暂无数据";
 "quota.resetCredits.suffix" = "重置额度 %d";
 
 "settings.tab.proxy" = "代理";

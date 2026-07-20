@@ -9,6 +9,7 @@
 "quota.window.weekly" = "Weekly";
 "quota.remaining" = "Left";
 "quota.reset" = "Reset";
+"quota.window.noData" = "No data";
 "quota.resetCredits.suffix" = "%d reset credits";
 
 "settings.tab.proxy" = "Proxy";

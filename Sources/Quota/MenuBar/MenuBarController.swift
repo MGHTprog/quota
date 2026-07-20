@@ -9,6 +9,8 @@ final class MenuBarController: NSObject, QuotaServiceObserver {
     private let contentView = MenuBarLimitView(
         frame: NSRect(x: 0, y: 0, width: MenuBarLimitView.preferredSize.width, height: MenuBarLimitView.preferredSize.height)
     )
+    /// Hosts vibrancy + content. Always the panel's contentView so resize keeps origin at zero.
+    private let panelRoot = MenuBarPanelRootView()
     private var panel: KeyablePanel?
     private var closeEventMonitor: Any?
     private var keyEventMonitor: Any?
@@ -33,6 +35,8 @@ final class MenuBarController: NSObject, QuotaServiceObserver {
         debugLog("[Quota] status item created")
 
         contentView.setFrameSize(contentView.intrinsicContentSize)
+        panelRoot.embed(contentView)
+        panelRoot.setFrameSize(contentView.intrinsicContentSize)
         contentView.onSettings = { [weak self] in self?.openSettings() }
         contentView.onRefresh = { [weak self] in self?.refresh() }
         contentView.onQuit = { [weak self] in self?.quit() }
@@ -153,25 +157,33 @@ final class MenuBarController: NSObject, QuotaServiceObserver {
         resizePanelToFitContent(reposition: panel?.isVisible == true)
     }
 
-    /// Keep the content view and hosting panel the same size.
+    /// Keep root, content, and panel the same size with origin locked at zero.
     ///
     /// NSPanel origin is bottom-left, so after a height change we re-anchor
-    /// under the status item; otherwise All ↔ single tab switches clip or leave gaps.
+    /// under the status item. Explicit frames avoid autoresizing bottom-anchor
+    /// glitches that clipped tabs / left empty gaps when switching All ↔ provider.
     private func resizePanelToFitContent(reposition: Bool) {
         let size = contentView.intrinsicContentSize
-        if contentView.frame.size != size {
-            contentView.setFrameSize(size)
-        }
+        applyPanelContentSize(size)
 
         guard let panel else { return }
 
         if panel.frame.size != size {
             panel.setContentSize(size)
         }
+        // setContentSize can reshuffle subviews — pin frames again.
+        applyPanelContentSize(size)
 
         if reposition, panel.isVisible, let button = statusItem.button {
             panel.setFrameOrigin(panelOrigin(for: panel, button: button))
         }
+    }
+
+    private func applyPanelContentSize(_ size: NSSize) {
+        let frame = NSRect(origin: .zero, size: size)
+        panelRoot.frame = frame
+        panelRoot.layoutChrome()
+        contentView.frame = frame
     }
 
     private func showPanel() {
@@ -198,13 +210,14 @@ final class MenuBarController: NSObject, QuotaServiceObserver {
 
     private func makePanel() -> KeyablePanel {
         let size = contentView.intrinsicContentSize
+        applyPanelContentSize(size)
         let panel = KeyablePanel(
             contentRect: NSRect(origin: .zero, size: size),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
-        panel.contentView = contentView
+        panel.contentView = panelRoot
         panel.backgroundColor = .clear
         panel.isOpaque = false
         panel.hasShadow = true
@@ -271,6 +284,59 @@ final class MenuBarController: NSObject, QuotaServiceObserver {
             NSEvent.removeMonitor(keyEventMonitor)
             self.keyEventMonitor = nil
         }
+    }
+}
+
+/// Panel chrome: vibrancy behind transparent content drawing.
+/// Frames are assigned explicitly by MenuBarController (no autoresizing).
+private final class MenuBarPanelRootView: NSView {
+    private let effectView = NSVisualEffectView()
+    private weak var embeddedContent: NSView?
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        configure()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        configure()
+    }
+
+    private func configure() {
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.clear.cgColor
+        layer?.cornerRadius = 12
+        layer?.masksToBounds = true
+        if #available(macOS 11.0, *) {
+            layer?.cornerCurve = .continuous
+        }
+
+        effectView.material = .popover
+        effectView.blendingMode = .behindWindow
+        effectView.state = .active
+        effectView.wantsLayer = true
+        addSubview(effectView)
+    }
+
+    func embed(_ content: NSView) {
+        if content.superview !== self {
+            content.removeFromSuperview()
+            // Content above vibrancy so custom drawing stays visible.
+            addSubview(content, positioned: .above, relativeTo: effectView)
+        }
+        embeddedContent = content
+        layoutChrome()
+    }
+
+    func layoutChrome() {
+        effectView.frame = bounds
+        embeddedContent?.frame = bounds
+    }
+
+    override func layout() {
+        super.layout()
+        layoutChrome()
     }
 }
 

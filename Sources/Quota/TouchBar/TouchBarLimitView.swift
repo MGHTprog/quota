@@ -109,9 +109,14 @@ private final class LimitRowView: NSView {
         resetLabel.stringValue = window.resetText
 
         let filledCount = Int((window.remainingPercent / 5).rounded(.toNearestOrAwayFromZero))
+        let fill = QuotaColors.status(
+            remainingPercent: window.remainingPercent,
+            surface: .touchBar,
+            role: .fill
+        )
         for (index, segment) in segments.enumerated() {
             segment.isFilled = index < filledCount
-            segment.fillColor = color(for: window.remainingPercent)
+            segment.fillColor = fill
         }
     }
 
@@ -125,9 +130,10 @@ private final class LimitRowView: NSView {
         titleLabel.stringValue = title
         percentLabel.stringValue = "\(L.remaining)--%"
         resetLabel.stringValue = "\(L.reset) --"
+        let placeholderFill = QuotaColors.status(.healthy, surface: .touchBar, role: .fill)
         segments.forEach { segment in
             segment.isFilled = false
-            segment.fillColor = .systemGreen
+            segment.fillColor = placeholderFill
         }
     }
 
@@ -190,13 +196,6 @@ private final class LimitRowView: NSView {
         ])
     }
 
-    private func color(for remainingPercent: Double) -> NSColor {
-        switch remainingPercent {
-        case 0..<20: return .systemRed
-        case 20..<45: return .systemOrange
-        default: return .systemGreen
-        }
-    }
 }
 
 // MARK: - Segment
@@ -206,7 +205,7 @@ private final class SegmentView: NSView {
         didSet { needsDisplay = true }
     }
 
-    var fillColor = NSColor.systemGreen {
+    var fillColor = QuotaColors.status(.healthy, surface: .touchBar, role: .fill) {
         didSet { needsDisplay = true }
     }
 
