@@ -61,7 +61,6 @@
 "error.requestTimedOut" = "Codex 请求超时";
 "error.grokUnauthorized" = "Grok 未登录或登录已过期";
 "error.grokNotSignedIn" = "Grok 未登录，请先运行 grok login";
-"error.grokMissingUsageWindow" = "Grok 响应缺少用量数据";
 "error.grokRequestFailed" = "Grok 请求失败（HTTP %d）";
 
 "notification.severity.warning" = "不足";

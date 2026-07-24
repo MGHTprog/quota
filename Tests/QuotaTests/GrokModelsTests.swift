@@ -2,12 +2,15 @@ import Foundation
 import Testing
 @testable import Quota
 
-@Test func mapsGrokBillingToWeeklyWindow() throws {
+@Test func mapsGrokBillingToWeeklyWindow() {
     let reset = Date(timeIntervalSince1970: 1_900_000_000)
     let response = GrokBillingResponse(
         config: GrokBillingConfig(
             creditUsagePercent: 25,
-            currentPeriod: GrokUsagePeriod(end: reset),
+            currentPeriod: GrokUsagePeriod(
+                type: "USAGE_PERIOD_TYPE_WEEKLY",
+                end: reset
+            ),
             billingPeriodEnd: reset,
             productUsage: [GrokProductUsage(product: "GrokBuild")],
             subscriptionTier: nil
@@ -17,7 +20,7 @@ import Testing
 
     #expect(response.displayPlan == "X Premium+")
 
-    let state = try response.makeProviderState(
+    let state = response.makeProviderState(
         identity: ProviderIdentity(displayName: "Grok", plan: response.displayPlan),
         now: Date(timeIntervalSince1970: 10)
     )
@@ -46,7 +49,7 @@ import Testing
     #expect(response.displayPlan == nil)
 }
 
-@Test func mapsGrokBillingUsingBillingPeriodEndFallback() throws {
+@Test func mapsGrokBillingUsingBillingPeriodEndFallback() {
     let reset = Date(timeIntervalSince1970: 1_900_000_000)
     let response = GrokBillingResponse(
         config: GrokBillingConfig(
@@ -59,7 +62,7 @@ import Testing
         subscriptionTier: nil
     )
 
-    let state = try response.makeProviderState(
+    let state = response.makeProviderState(
         identity: ProviderIdentity(displayName: "Grok", plan: nil)
     )
 
@@ -67,23 +70,122 @@ import Testing
     #expect(state.windows[0].resetsAt == reset)
 }
 
-@Test func throwsWhenGrokUsageDataIsMissing() {
+@Test func prefersCurrentPeriodEndOverBillingPeriodEnd() {
+    let weeklyEnd = Date(timeIntervalSince1970: 1_900_000_000)
+    let billingEnd = Date(timeIntervalSince1970: 1_900_100_000)
     let response = GrokBillingResponse(
         config: GrokBillingConfig(
-            creditUsagePercent: nil,
-            currentPeriod: nil,
-            billingPeriodEnd: nil,
-            productUsage: nil,
-            subscriptionTier: nil
+            creditUsagePercent: 12,
+            currentPeriod: GrokUsagePeriod(end: weeklyEnd),
+            billingPeriodEnd: billingEnd
         ),
         subscriptionTier: nil
     )
 
-    #expect(throws: (any Error).self) {
-        try response.makeProviderState(
-            identity: ProviderIdentity(displayName: "Grok", plan: nil)
-        )
+    #expect(response.resetsAt == weeklyEnd)
+    let state = response.makeProviderState(
+        identity: ProviderIdentity(displayName: "Grok", plan: nil)
+    )
+    #expect(state.windows[0].resetsAt == weeklyEnd)
+}
+
+/// Omitted `creditUsagePercent` is usage 0 (protobuf JSON default), independent
+/// of whether period fields are present.
+@Test func omittedCreditUsagePercentDefaultsToZeroUsed() {
+    let reset = Date(timeIntervalSince1970: 1_900_000_000)
+    let withPeriod = GrokBillingResponse(
+        config: GrokBillingConfig(
+            creditUsagePercent: 0,
+            currentPeriod: GrokUsagePeriod(
+                type: "USAGE_PERIOD_TYPE_WEEKLY",
+                end: reset
+            ),
+            billingPeriodEnd: reset
+        ),
+        subscriptionTier: "X Premium+"
+    )
+    let withoutPeriod = GrokBillingResponse(
+        config: GrokBillingConfig(),
+        subscriptionTier: nil
+    )
+
+    let full = withPeriod.makeProviderState(
+        identity: ProviderIdentity(displayName: "Grok", plan: withPeriod.displayPlan)
+    )
+    #expect(full.windows[0].usedPercent == 0)
+    #expect(full.windows[0].remainingPercent == 100)
+    #expect(full.windows[0].resetsAt == reset)
+
+    let noPeriod = withoutPeriod.makeProviderState(
+        identity: ProviderIdentity(displayName: "Grok", plan: nil)
+    )
+    #expect(noPeriod.windows[0].usedPercent == 0)
+    #expect(noPeriod.windows[0].remainingPercent == 100)
+    #expect(noPeriod.windows[0].resetsAt == nil)
+}
+
+/// Live post-reset shape from cli-chat-proxy (no creditUsagePercent key).
+@Test func decodesLivePostResetCreditsJSONAsFullPool() throws {
+    let json = """
+    {
+      "config": {
+        "currentPeriod": {
+          "type": "USAGE_PERIOD_TYPE_WEEKLY",
+          "start": "2026-07-24T07:56:58.473996+00:00",
+          "end": "2026-07-31T07:56:58.473996+00:00"
+        },
+        "onDemandCap": { "val": 0 },
+        "onDemandUsed": { "val": 0 },
+        "isUnifiedBillingUser": true,
+        "prepaidBalance": { "val": 0 },
+        "topUpMethod": "TOP_UP_METHOD_SAVED_PAYMENT_METHOD",
+        "billingPeriodStart": "2026-07-24T07:56:58.473996+00:00",
+        "billingPeriodEnd": "2026-07-31T07:56:58.473996+00:00"
+      },
+      "subscriptionTier": "X Premium+"
     }
+    """
+    let data = Data(json.utf8)
+    let response = try GrokBillingCoding.makeDecoder()
+        .decode(GrokBillingResponse.self, from: data)
+
+    #expect(response.config.creditUsagePercent == 0)
+    #expect(response.displayPlan == "X Premium+")
+    #expect(response.config.currentPeriod?.type == "USAGE_PERIOD_TYPE_WEEKLY")
+
+    let state = response.makeProviderState(
+        identity: ProviderIdentity(displayName: "Grok", plan: response.displayPlan)
+    )
+    #expect(state.windows[0].usedPercent == 0)
+    #expect(state.windows[0].remainingPercent == 100)
+    #expect(state.windows[0].resetsAt != nil)
+    #expect(state.identity.plan == "X Premium+")
+}
+
+@Test func decodesCreditsJSONWithExplicitUsagePercent() throws {
+    let json = """
+    {
+      "config": {
+        "creditUsagePercent": 91.0,
+        "currentPeriod": {
+          "type": "USAGE_PERIOD_TYPE_WEEKLY",
+          "start": "2026-07-17T07:56:58.473996+00:00",
+          "end": "2026-07-24T07:56:58.473996+00:00"
+        },
+        "billingPeriodEnd": "2026-07-24T07:56:58.473996+00:00"
+      },
+      "subscriptionTier": "X Premium+"
+    }
+    """
+    let response = try GrokBillingCoding.makeDecoder()
+        .decode(GrokBillingResponse.self, from: Data(json.utf8))
+
+    #expect(response.config.creditUsagePercent == 91)
+    let state = response.makeProviderState(
+        identity: ProviderIdentity(displayName: "Grok", plan: response.displayPlan)
+    )
+    #expect(state.windows[0].usedPercent == 91)
+    #expect(state.windows[0].remainingPercent == 9)
 }
 
 @Test func loadsGrokAccessTokenFromAuthFile() throws {

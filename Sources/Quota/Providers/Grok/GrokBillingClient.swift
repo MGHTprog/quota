@@ -16,7 +16,7 @@ final class GrokBillingClient {
         self.endpoint = endpoint
         self.session = session
         self.authStore = authStore
-        self.decoder = Self.makeDecoder()
+        self.decoder = GrokBillingCoding.makeDecoder()
     }
 
     convenience init(
@@ -40,6 +40,7 @@ final class GrokBillingClient {
 
         var request = URLRequest(url: endpoint)
         request.httpMethod = "GET"
+        request.cachePolicy = .reloadIgnoringLocalCacheData
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Quota/1.0", forHTTPHeaderField: "User-Agent")
         request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
@@ -74,34 +75,11 @@ final class GrokBillingClient {
         }.resume()
     }
 
-    private static func makeDecoder() -> JSONDecoder {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .custom { decoder in
-            let container = try decoder.singleValueContainer()
-            let value = try container.decode(String.self)
-
-            let withFractional = ISO8601DateFormatter()
-            withFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-            if let date = withFractional.date(from: value) {
-                return date
-            }
-
-            let basic = ISO8601DateFormatter()
-            basic.formatOptions = [.withInternetDateTime]
-            if let date = basic.date(from: value) {
-                return date
-            }
-
-            throw DecodingError.dataCorruptedError(
-                in: container,
-                debugDescription: "Invalid ISO8601 date: \(value)"
-            )
-        }
-        return decoder
-    }
-
     static func makeSession(configuration: ProxyConfiguration) -> URLSession {
         let sessionConfiguration = URLSessionConfiguration.default
+        // Quota must always hit the network; never serve a stale billing snapshot.
+        sessionConfiguration.requestCachePolicy = .reloadIgnoringLocalCacheData
+        sessionConfiguration.urlCache = nil
 
         switch configuration.mode {
         case .automatic:

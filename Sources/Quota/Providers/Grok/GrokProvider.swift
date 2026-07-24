@@ -24,16 +24,12 @@ final class GrokProvider: QuotaProvider {
         client.fetchBilling { [displayName] result in
             switch result {
             case .success(let response):
-                do {
-                    let identity = ProviderIdentity(
-                        displayName: displayName,
-                        plan: response.displayPlan
-                    )
-                    let state = try response.makeProviderState(identity: identity)
-                    completion(.success(state))
-                } catch {
-                    completion(.failure(error))
-                }
+                let identity = ProviderIdentity(
+                    displayName: displayName,
+                    plan: response.displayPlan
+                )
+                // Mapping is non-throwing: usage defaults are applied at decode time.
+                completion(.success(response.makeProviderState(identity: identity)))
             case .failure(let error):
                 completion(.failure(error))
             }

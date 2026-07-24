@@ -61,7 +61,6 @@
 "error.requestTimedOut" = "Codex request timed out";
 "error.grokUnauthorized" = "Grok is not signed in or the login session has expired";
 "error.grokNotSignedIn" = "Grok is not signed in. Run grok login first.";
-"error.grokMissingUsageWindow" = "Grok response is missing usage data";
 "error.grokRequestFailed" = "Grok request failed (HTTP %d)";
 
 "notification.severity.warning" = "is low";

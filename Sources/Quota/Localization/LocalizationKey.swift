@@ -63,7 +63,6 @@ enum LocalizationKey: String {
     case requestTimedOut = "error.requestTimedOut"
     case grokUnauthorized = "error.grokUnauthorized"
     case grokNotSignedIn = "error.grokNotSignedIn"
-    case grokMissingUsageWindow = "error.grokMissingUsageWindow"
     case grokRequestFailed = "error.grokRequestFailed"
 
     case severityWarning = "notification.severity.warning"
