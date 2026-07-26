@@ -8,6 +8,8 @@ protocol QuotaProvider: AnyObject {
     var id: ProviderID { get }
     var displayName: String { get }
     var iconResourceName: String? { get }
+    /// Monochrome mark for the popup filter tabs (template-tinted).
+    var tabIconResourceName: String? { get }
     var fallbackGlyph: String { get }
     var accentColorHex: String { get }
 
@@ -30,6 +32,8 @@ protocol QuotaProvider: AnyObject {
 
 extension QuotaProvider {
     var iconResourceName: String? { nil }
+
+    var tabIconResourceName: String? { nil }
 
     var fallbackGlyph: String {
         String(displayName.prefix(1)).uppercased()

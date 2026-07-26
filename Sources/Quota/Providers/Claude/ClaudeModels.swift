@@ -100,6 +100,7 @@ extension ClaudeUsageResponse {
             _ limit: ClaudeUsageLimit,
             id: String,
             title: String,
+            scope: String? = nil,
             to windows: inout [QuotaWindow]
         ) {
             guard seenIDs.insert(id).inserted else { return }
@@ -110,7 +111,8 @@ extension ClaudeUsageResponse {
                 usedPercent: usedPercent,
                 remainingPercent: (100 - usedPercent).clamped(to: 0...100),
                 resetsAt: limit.resetsAt,
-                isAvailable: true
+                isAvailable: true,
+                scope: scope
             ))
         }
 
@@ -125,10 +127,13 @@ extension ClaudeUsageResponse {
                 )
             case "weekly":
                 if let scope = limit.scopeDisplayName {
+                    // Scoped id keeps notification thresholds per pool; the
+                    // rendered title comes from QuotaWindow.localizedTitle.
                     appendWindow(
                         limit,
                         id: ClaudeWindowID.weekly(scope: scope),
-                        title: "\(L.weeklyTitle) · \(scope)",
+                        title: L.weeklyTitle,
+                        scope: scope,
                         to: &weeklyWindows
                     )
                 } else {

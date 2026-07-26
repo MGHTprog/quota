@@ -10,6 +10,7 @@ final class ClaudeProvider: QuotaProvider {
     let id: ProviderID = .claude
     let displayName = "Claude"
     let iconResourceName: String? = "ProviderIconClaude"
+    let tabIconResourceName: String? = "TabIconClaude"
     let fallbackGlyph = "C"
     let accentColorHex = "#D97757"
 

@@ -7,6 +7,7 @@ final class GrokProvider: QuotaProvider {
     let id: ProviderID = .grok
     let displayName = "Grok"
     let iconResourceName: String? = "ProviderIconGrok"
+    let tabIconResourceName: String? = "TabIconGrok"
     let fallbackGlyph = "xAI"
     let accentColorHex = "#111111"
 

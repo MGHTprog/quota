@@ -791,18 +791,7 @@ final class MenuBarLimitView: NSView {
 
     /// Tab-only monochrome marks (no product tile) so filter icons stay light.
     private func monochromeTabIcon(for option: ProviderSettingsOption) -> NSImage? {
-        let resourceName: String?
-        switch option.id {
-        case .codex:
-            resourceName = "TabIconCodex"
-        case .grok:
-            resourceName = "TabIconGrok"
-        case .claude:
-            resourceName = "TabIconClaude"
-        default:
-            resourceName = nil
-        }
-        guard let resourceName else { return nil }
+        guard let resourceName = option.tabIconResourceName else { return nil }
         let cacheKey = "tab-\(resourceName)"
         if let cached = iconCache[cacheKey] {
             return cached

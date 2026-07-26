@@ -60,6 +60,7 @@ final class ProviderRegistry {
             id: provider.id,
             displayName: provider.displayName,
             iconResourceName: provider.iconResourceName,
+            tabIconResourceName: provider.tabIconResourceName,
             fallbackGlyph: provider.fallbackGlyph,
             accentColorHex: provider.accentColorHex
         )

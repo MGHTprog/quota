@@ -66,6 +66,8 @@ struct ProviderSettingsOption: Equatable {
     var id: ProviderID
     var displayName: String
     var iconResourceName: String?
+    /// Monochrome mark for the popup filter tabs (template-tinted).
+    var tabIconResourceName: String?
     var fallbackGlyph: String
     var accentColorHex: String
 
@@ -73,12 +75,14 @@ struct ProviderSettingsOption: Equatable {
         id: ProviderID,
         displayName: String,
         iconResourceName: String? = nil,
+        tabIconResourceName: String? = nil,
         fallbackGlyph: String? = nil,
         accentColorHex: String = "#3B82F6"
     ) {
         self.id = id
         self.displayName = displayName
         self.iconResourceName = iconResourceName
+        self.tabIconResourceName = tabIconResourceName
         self.fallbackGlyph = fallbackGlyph ?? String(displayName.prefix(1)).uppercased()
         self.accentColorHex = accentColorHex
     }

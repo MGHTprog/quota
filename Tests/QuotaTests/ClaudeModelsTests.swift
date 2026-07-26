@@ -65,6 +65,7 @@ private let sampleUsageJSON = """
     #expect(state.windows[0].resetsAt != nil)
 
     #expect(state.windows[1].id == "weekly@Fable")
+    #expect(state.windows[1].scope == "Fable")
     #expect(state.windows[1].usedPercent == 1)
     #expect(state.windows[1].remainingPercent == 99)
     #expect(state.windows[1].localizedTitle.contains("Fable"))
