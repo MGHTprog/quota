@@ -39,19 +39,13 @@ struct ClaudeAuthStore {
     }
 
     /// Returns credentials with a non-expired access token.
+    ///
+    /// Falls back to the credentials file when the Keychain entry is missing
+    /// *or* undecodable, so a stale/corrupt Keychain item cannot mask a valid
+    /// file sign-in.
     func loadCredentials(now: Date = Date()) throws -> ClaudeCredentials {
-        guard let data = keychainData() ?? loadFileData() else {
-            throw ClaudeQuotaError.notSignedIn
-        }
-
-        let credentials: ClaudeCredentials
-        do {
-            credentials = try JSONDecoder().decode(ClaudeCredentials.self, from: data)
-        } catch {
-            throw ClaudeQuotaError.notSignedIn
-        }
-
-        guard !credentials.claudeAiOauth.accessToken.isEmpty else {
+        guard let credentials = decodeCredentials(from: keychainData())
+            ?? decodeCredentials(from: loadFileData()) else {
             throw ClaudeQuotaError.notSignedIn
         }
 
@@ -60,6 +54,15 @@ struct ClaudeAuthStore {
             throw ClaudeQuotaError.tokenExpired
         }
 
+        return credentials
+    }
+
+    private func decodeCredentials(from data: Data?) -> ClaudeCredentials? {
+        guard let data,
+              let credentials = try? JSONDecoder().decode(ClaudeCredentials.self, from: data),
+              !credentials.claudeAiOauth.accessToken.isEmpty else {
+            return nil
+        }
         return credentials
     }
 

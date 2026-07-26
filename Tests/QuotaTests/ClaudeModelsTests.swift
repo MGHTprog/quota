@@ -139,6 +139,27 @@ private let sampleUsageJSON = """
     }
 }
 
+@Test func claudeAuthStoreFallsBackToFileWhenKeychainDataIsCorrupt() throws {
+    let home = FileManager.default.temporaryDirectory
+        .appendingPathComponent("claude-auth-test-\(UUID().uuidString)")
+    let claudeDir = home.appendingPathComponent(".claude")
+    try FileManager.default.createDirectory(at: claudeDir, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: home) }
+
+    let json = """
+    {"claudeAiOauth": {"accessToken": "sk-from-file", "expiresAt": 4102444800000, "subscriptionType": "max"}}
+    """
+    try Data(json.utf8).write(to: claudeDir.appendingPathComponent(".credentials.json"))
+
+    let store = ClaudeAuthStore(
+        homeDirectory: home,
+        keychainData: { Data("not json".utf8) }
+    )
+
+    let credentials = try store.loadCredentials(now: Date(timeIntervalSince1970: 1_000))
+    #expect(credentials.claudeAiOauth.accessToken == "sk-from-file")
+}
+
 @Test func claudeAuthStoreAcceptsValidKeychainCredentials() throws {
     let json = """
     {"claudeAiOauth": {"accessToken": "sk-test", "expiresAt": 4102444800000, "subscriptionType": "pro"}}
