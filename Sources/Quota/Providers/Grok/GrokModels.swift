@@ -114,31 +114,9 @@ enum GrokWindowID {
 // MARK: - JSON decoding
 
 enum GrokBillingCoding {
-    /// Shared decoder for the credits billing API (ISO-8601 dates w/ optional fractional seconds).
+    /// Decoder for the credits billing API (camelCase keys, ISO-8601 dates).
     static func makeDecoder() -> JSONDecoder {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .custom { decoder in
-            let container = try decoder.singleValueContainer()
-            let value = try container.decode(String.self)
-
-            let withFractional = ISO8601DateFormatter()
-            withFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-            if let date = withFractional.date(from: value) {
-                return date
-            }
-
-            let basic = ISO8601DateFormatter()
-            basic.formatOptions = [.withInternetDateTime]
-            if let date = basic.date(from: value) {
-                return date
-            }
-
-            throw DecodingError.dataCorruptedError(
-                in: container,
-                debugDescription: "Invalid ISO8601 date: \(value)"
-            )
-        }
-        return decoder
+        QuotaJSONCoding.makeISO8601Decoder()
     }
 }
 
@@ -194,13 +172,5 @@ enum GrokQuotaError: LocalizedError {
         case .requestFailed(let statusCode):
             return L.grokRequestFailed(statusCode)
         }
-    }
-}
-
-// MARK: - Private helpers
-
-private extension Comparable {
-    func clamped(to range: ClosedRange<Self>) -> Self {
-        min(max(self, range.lowerBound), range.upperBound)
     }
 }

@@ -92,8 +92,8 @@ private let sampleUsageJSON = """
 @Test func claudeSessionWindowSortsFirst() {
     var response = ClaudeUsageResponse()
     response.limits = [
-        ClaudeUsageLimit(kind: "weekly", group: "weekly", percent: 10),
-        ClaudeUsageLimit(kind: "session", group: "session", percent: 5)
+        ClaudeUsageLimit(group: "weekly", percent: 10),
+        ClaudeUsageLimit(group: "session", percent: 5)
     ]
 
     let state = response.makeProviderState(

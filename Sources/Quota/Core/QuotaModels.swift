@@ -145,3 +145,12 @@ struct ProviderQuotaState: Equatable, Sendable {
         return rows
     }
 }
+
+// MARK: - Shared helpers
+
+extension Comparable {
+    /// Clamps to `range` (used by providers to keep percents in 0...100).
+    func clamped(to range: ClosedRange<Self>) -> Self {
+        min(max(self, range.lowerBound), range.upperBound)
+    }
+}

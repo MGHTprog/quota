@@ -21,13 +21,8 @@ struct ClaudeUsageResponse: Decodable {
 
 struct ClaudeUsageBucket: Decodable {
     /// Percent of the window already used (0...100).
-    var utilization: Double?
-    var resetsAt: Date?
-
-    init(utilization: Double? = nil, resetsAt: Date? = nil) {
-        self.utilization = utilization
-        self.resetsAt = resetsAt
-    }
+    var utilization: Double? = nil
+    var resetsAt: Date? = nil
 }
 
 struct ClaudeUsageLimit: Decodable {
@@ -39,28 +34,12 @@ struct ClaudeUsageLimit: Decodable {
         var model: Model?
     }
 
-    /// e.g. `session`, `weekly_scoped`.
-    var kind: String?
     /// Window family: `session` or `weekly`.
-    var group: String?
+    var group: String? = nil
     /// Percent of the window already used (0...100).
-    var percent: Double?
-    var resetsAt: Date?
-    var scope: Scope?
-
-    init(
-        kind: String? = nil,
-        group: String? = nil,
-        percent: Double? = nil,
-        resetsAt: Date? = nil,
-        scope: Scope? = nil
-    ) {
-        self.kind = kind
-        self.group = group
-        self.percent = percent
-        self.resetsAt = resetsAt
-        self.scope = scope
-    }
+    var percent: Double? = nil
+    var resetsAt: Date? = nil
+    var scope: Scope? = nil
 }
 
 enum ClaudeWindowID {
@@ -77,33 +56,9 @@ enum ClaudeWindowID {
 // MARK: - JSON decoding
 
 enum ClaudeUsageCoding {
-    /// Decoder for the OAuth usage API (snake_case keys, ISO-8601 dates with
-    /// optional fractional seconds).
+    /// Decoder for the OAuth usage API (snake_case keys, ISO-8601 dates).
     static func makeDecoder() -> JSONDecoder {
-        let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
-        decoder.dateDecodingStrategy = .custom { decoder in
-            let container = try decoder.singleValueContainer()
-            let value = try container.decode(String.self)
-
-            let withFractional = ISO8601DateFormatter()
-            withFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-            if let date = withFractional.date(from: value) {
-                return date
-            }
-
-            let basic = ISO8601DateFormatter()
-            basic.formatOptions = [.withInternetDateTime]
-            if let date = basic.date(from: value) {
-                return date
-            }
-
-            throw DecodingError.dataCorruptedError(
-                in: container,
-                debugDescription: "Invalid ISO8601 date: \(value)"
-            )
-        }
-        return decoder
+        QuotaJSONCoding.makeISO8601Decoder(convertFromSnakeCase: true)
     }
 }
 
@@ -141,43 +96,51 @@ extension ClaudeUsageResponse {
         var weeklyWindows: [QuotaWindow] = []
         var seenIDs = Set<String>()
 
-        for limit in limits {
-            guard let group = limit.group?.lowercased() else { continue }
-
-            let id: String
-            let title: String
-            switch group {
-            case "session":
-                id = ClaudeWindowID.session
-                title = L.fiveHourTitle
-            case "weekly":
-                if let scope = limit.scopeDisplayName {
-                    id = ClaudeWindowID.weekly(scope: scope)
-                    title = "\(L.weeklyTitle) · \(scope)"
-                } else {
-                    id = ClaudeWindowID.weekly
-                    title = L.weeklyTitle
-                }
-            default:
-                continue
-            }
-
-            guard seenIDs.insert(id).inserted else { continue }
-
+        func appendWindow(
+            _ limit: ClaudeUsageLimit,
+            id: String,
+            title: String,
+            to windows: inout [QuotaWindow]
+        ) {
+            guard seenIDs.insert(id).inserted else { return }
             let usedPercent = (limit.percent ?? 0).clamped(to: 0...100)
-            let window = QuotaWindow(
+            windows.append(QuotaWindow(
                 id: id,
                 title: title,
                 usedPercent: usedPercent,
                 remainingPercent: (100 - usedPercent).clamped(to: 0...100),
                 resetsAt: limit.resetsAt,
                 isAvailable: true
-            )
+            ))
+        }
 
-            if group == "session" {
-                sessionWindows.append(window)
-            } else {
-                weeklyWindows.append(window)
+        for limit in limits {
+            switch limit.group?.lowercased() {
+            case "session":
+                appendWindow(
+                    limit,
+                    id: ClaudeWindowID.session,
+                    title: L.fiveHourTitle,
+                    to: &sessionWindows
+                )
+            case "weekly":
+                if let scope = limit.scopeDisplayName {
+                    appendWindow(
+                        limit,
+                        id: ClaudeWindowID.weekly(scope: scope),
+                        title: "\(L.weeklyTitle) · \(scope)",
+                        to: &weeklyWindows
+                    )
+                } else {
+                    appendWindow(
+                        limit,
+                        id: ClaudeWindowID.weekly,
+                        title: L.weeklyTitle,
+                        to: &weeklyWindows
+                    )
+                }
+            default:
+                continue
             }
         }
 
@@ -255,13 +218,5 @@ enum ClaudeQuotaError: LocalizedError {
         case .requestFailed(let statusCode):
             return L.claudeRequestFailed(statusCode)
         }
-    }
-}
-
-// MARK: - Private helpers
-
-private extension Comparable {
-    func clamped(to range: ClosedRange<Self>) -> Self {
-        min(max(self, range.lowerBound), range.upperBound)
     }
 }
