@@ -797,6 +797,8 @@ final class MenuBarLimitView: NSView {
             resourceName = "TabIconCodex"
         case .grok:
             resourceName = "TabIconGrok"
+        case .claude:
+            resourceName = "TabIconClaude"
         default:
             resourceName = nil
         }

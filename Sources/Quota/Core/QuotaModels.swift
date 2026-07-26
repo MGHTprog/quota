@@ -16,9 +16,15 @@ struct QuotaWindow: Equatable, Sendable {
     var isAvailable: Bool
 
     /// Title resolved for the current UI language from `id` when possible.
+    ///
+    /// Ids may carry a scope suffix after `@` (e.g. `weekly@Fable`) so scoped
+    /// windows stay distinguishable after a language switch.
     var localizedTitle: String {
         let normalized = id.lowercased()
         if normalized.contains("week") {
+            if let scope = scopeName {
+                return "\(L.weeklyTitle) · \(scope)"
+            }
             return L.weeklyTitle
         }
         if normalized.contains("five")
@@ -27,6 +33,13 @@ struct QuotaWindow: Equatable, Sendable {
             return L.fiveHourTitle
         }
         return title
+    }
+
+    /// Scope suffix encoded in the id (`weekly@Fable` → `Fable`).
+    private var scopeName: String? {
+        guard let range = id.range(of: "@") else { return nil }
+        let name = String(id[range.upperBound...])
+        return name.isEmpty ? nil : name
     }
 
     var resetText: String {

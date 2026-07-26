@@ -2,7 +2,7 @@
 
 [简体中文](README.zh-CN.md)
 
-Quota is a lightweight macOS menu bar app for monitoring AI coding quota — [Codex](https://github.com/openai/codex) and [Grok](https://x.ai) (Grok Build / CLI).
+Quota is a lightweight macOS menu bar app for monitoring AI coding quota — [Codex](https://github.com/openai/codex), [Claude](https://claude.com/claude-code) (Claude Code), and [Grok](https://x.ai) (Grok Build / CLI).
 
 <p align="center">
   <img src="https://img.shields.io/badge/platform-macOS%2014%2B-blue" alt="macOS 14+">
@@ -12,11 +12,12 @@ Quota is a lightweight macOS menu bar app for monitoring AI coding quota — [Co
 
 > [!NOTE]
 > **Codex:** requires Codex CLI, ChatGPT.app, or Codex.app, with an account that exposes rate limit data.  
+> **Claude:** requires Claude Code signed in (`claude`). Quota reads the login token from the macOS Keychain (via the system `security` tool — no permission prompt).  
 > **Grok:** requires Grok CLI signed in (`grok login`). Some networks need a proxy to reach Grok billing.
 
 ## Features
 
-- Menu bar popup for **Codex** (5-hour + weekly limits, reset credits when available) and **Grok** (weekly usage pool)
+- Menu bar popup for **Codex** (5-hour + weekly limits, reset credits when available), **Claude** (5-hour session + weekly limits, including per-model weekly pools), and **Grok** (weekly usage pool)
 - Provider filter tabs: All / each enabled provider; enable up to 5 providers and drag to reorder in Settings
 - First enabled provider in the list is primary: leftmost provider tab, status-item summary, and Touch Bar when available
 - macOS notifications when remaining quota is low (per provider / window)

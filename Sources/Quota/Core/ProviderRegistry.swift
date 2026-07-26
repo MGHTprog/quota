@@ -75,6 +75,7 @@ final class ProviderRegistry {
             appMetadata: appMetadata
         )
         let grok = GrokProvider(proxySettingsStore: proxySettingsStore)
-        return ProviderRegistry(providers: [codex, grok])
+        let claude = ClaudeProvider(proxySettingsStore: proxySettingsStore)
+        return ProviderRegistry(providers: [codex, grok, claude])
     }
 }

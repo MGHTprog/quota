@@ -62,6 +62,10 @@
 "error.grokUnauthorized" = "Grok is not signed in or the login session has expired";
 "error.grokNotSignedIn" = "Grok is not signed in. Run grok login first.";
 "error.grokRequestFailed" = "Grok request failed (HTTP %d)";
+"error.claudeUnauthorized" = "Claude Code is not signed in or the login session has expired";
+"error.claudeNotSignedIn" = "Claude Code is not signed in. Run claude and sign in first.";
+"error.claudeTokenExpired" = "Claude Code login has expired. Run claude once to refresh it.";
+"error.claudeRequestFailed" = "Claude request failed (HTTP %d)";
 
 "notification.severity.warning" = "is low";
 "notification.severity.urgent" = "is urgent";

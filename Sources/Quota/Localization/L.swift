@@ -65,6 +65,10 @@ enum L {
     static var grokUnauthorized: String { tr(.grokUnauthorized) }
     static var grokNotSignedIn: String { tr(.grokNotSignedIn) }
     static func grokRequestFailed(_ statusCode: Int) -> String { tr(.grokRequestFailed, statusCode) }
+    static var claudeUnauthorized: String { tr(.claudeUnauthorized) }
+    static var claudeNotSignedIn: String { tr(.claudeNotSignedIn) }
+    static var claudeTokenExpired: String { tr(.claudeTokenExpired) }
+    static func claudeRequestFailed(_ statusCode: Int) -> String { tr(.claudeRequestFailed, statusCode) }
 
     static func proxyModeTitle(_ mode: ProxyMode) -> String {
         switch mode {

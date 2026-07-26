@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-Quota 是一个轻量级 macOS 菜单栏应用，用于查看 AI 编程额度 —— 支持 [Codex](https://github.com/openai/codex) 与 [Grok](https://x.ai)（Grok Build / CLI）。
+Quota 是一个轻量级 macOS 菜单栏应用，用于查看 AI 编程额度 —— 支持 [Codex](https://github.com/openai/codex)、[Claude](https://claude.com/claude-code)（Claude Code）与 [Grok](https://x.ai)（Grok Build / CLI）。
 
 <p align="center">
   <img src="https://img.shields.io/badge/platform-macOS%2014%2B-blue" alt="macOS 14+">
@@ -12,11 +12,12 @@ Quota 是一个轻量级 macOS 菜单栏应用，用于查看 AI 编程额度 �
 
 > [!NOTE]
 > **Codex：** 需要 Codex CLI、ChatGPT.app 或 Codex.app，且账户能返回 rate limit 数据。  
+> **Claude：** 需要已登录的 Claude Code（`claude`）。Quota 通过系统 `security` 工具从 macOS 钥匙串读取登录令牌，无需授权弹窗。  
 > **Grok：** 需要已登录的 Grok CLI（`grok login`）。部分网络环境访问 Grok 计费接口时可能需要代理。
 
 ## 特性
 
-- 菜单栏同时支持 **Codex**（5 小时 + 周限额，有重置额度时显示）与 **Grok**（周额度）
+- 菜单栏同时支持 **Codex**（5 小时 + 周限额，有重置额度时显示）、**Claude**（5 小时会话 + 周限额，含按模型的周额度）与 **Grok**（周额度）
 - 弹窗顶部可切换「全部 / 各服务」；设置中最多启用 5 个服务，可拖拽排序
 - 排序最前的已启用服务为优先服务（服务 tab 靠左、状态栏摘要、有 Touch Bar 时也显示在 Touch Bar）
 - 额度不足时按厂商、按窗口发送 macOS 通知

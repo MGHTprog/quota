@@ -62,6 +62,10 @@
 "error.grokUnauthorized" = "Grok 未登录或登录已过期";
 "error.grokNotSignedIn" = "Grok 未登录，请先运行 grok login";
 "error.grokRequestFailed" = "Grok 请求失败（HTTP %d）";
+"error.claudeUnauthorized" = "Claude Code 未登录或登录已过期";
+"error.claudeNotSignedIn" = "Claude Code 未登录，请先运行 claude 并登录";
+"error.claudeTokenExpired" = "Claude Code 登录已过期，运行一次 claude 即可刷新";
+"error.claudeRequestFailed" = "Claude 请求失败（HTTP %d）";
 
 "notification.severity.warning" = "不足";
 "notification.severity.urgent" = "告急";
