@@ -16,9 +16,13 @@
 "settings.tab.hotkey" = "Hotkey";
 "settings.tab.language" = "Language";
 "settings.tab.providers" = "Providers";
+"settings.tab.about" = "About";
 "settings.button.save" = "Save";
 "settings.button.cancel" = "Cancel";
 "settings.app.version" = "Version %@";
+"settings.about.subtitle" = "A small tool for viewing AI service usage quotas";
+"settings.about.feedback" = "Open source project · Leave a Star";
+"settings.about.github" = "Open GitHub";
 
 "settings.proxy.subtitle" = "Choose a proxy mode for connecting to Codex services";
 "settings.proxy.mode" = "Mode";

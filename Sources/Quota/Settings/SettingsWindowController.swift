@@ -109,11 +109,12 @@ final class SettingsWindowController: NSWindowController {
 /// Tabbed content controller for proxy / hotkey / language preferences.
 private final class SettingsViewController: NSViewController {
     // Tab
-    private let tabControl = NSSegmentedControl(labels: ["", "", "", ""], trackingMode: .selectOne, target: nil, action: nil)
+    private let tabControl = NSSegmentedControl(labels: ["", "", "", "", ""], trackingMode: .selectOne, target: nil, action: nil)
     private let proxyContainer = NSView()
     private let hotkeyContainer = NSView()
     private let languageContainer = NSView()
     private let providersContainer = NSView()
+    private let aboutContainer = NSView()
     // Proxy
     private let modeControl = NSSegmentedControl(labels: ["", "", ""], trackingMode: .selectOne, target: nil, action: nil)
     private let proxyURLField = NSTextField(string: "")
@@ -136,6 +137,10 @@ private final class SettingsViewController: NSViewController {
     private let providersHelpLabel = NSTextField(wrappingLabelWithString: "")
     private let providerListView = ProviderListSettingsView()
     private var providerListHeightConstraint: NSLayoutConstraint?
+    // About
+    private let aboutSubtitleLabel = NSTextField(labelWithString: "")
+    private let aboutFeedbackLabel = NSTextField(wrappingLabelWithString: "")
+    private let aboutGitHubButton = NSButton(title: "", target: nil, action: nil)
     // Buttons
     private let versionLabel = NSTextField(labelWithString: "")
     private let saveButton = NSButton(title: "", target: nil, action: nil)
@@ -235,6 +240,11 @@ private final class SettingsViewController: NSViewController {
         providersContainer.translatesAutoresizingMaskIntoConstraints = false
         providersContainer.isHidden = true
 
+        // ── About tab content ──
+        setupAboutTab()
+        aboutContainer.translatesAutoresizingMaskIntoConstraints = false
+        aboutContainer.isHidden = true
+
         // ── Button row ──
         versionLabel.font = .systemFont(ofSize: 11, weight: .regular)
         versionLabel.textColor = .secondaryLabelColor
@@ -260,7 +270,7 @@ private final class SettingsViewController: NSViewController {
 
         // ── Root layout ──
         let rootStack = NSStackView(
-            views: [tabControl, proxyContainer, hotkeyContainer, languageContainer, providersContainer, buttonRow]
+            views: [tabControl, proxyContainer, hotkeyContainer, languageContainer, providersContainer, aboutContainer, buttonRow]
         )
         rootStack.orientation = .vertical
         rootStack.alignment = .leading
@@ -288,6 +298,8 @@ private final class SettingsViewController: NSViewController {
             languageContainer.trailingAnchor.constraint(equalTo: rootStack.trailingAnchor, constant: -Layout.padding),
             providersContainer.leadingAnchor.constraint(equalTo: rootStack.leadingAnchor, constant: Layout.padding),
             providersContainer.trailingAnchor.constraint(equalTo: rootStack.trailingAnchor, constant: -Layout.padding),
+            aboutContainer.leadingAnchor.constraint(equalTo: rootStack.leadingAnchor, constant: Layout.padding),
+            aboutContainer.trailingAnchor.constraint(equalTo: rootStack.trailingAnchor, constant: -Layout.padding),
             tabControl.leadingAnchor.constraint(equalTo: rootStack.leadingAnchor, constant: Layout.padding),
         ])
 
@@ -444,6 +456,42 @@ private final class SettingsViewController: NSViewController {
         ])
     }
 
+    private func setupAboutTab() {
+        aboutSubtitleLabel.font = .systemFont(ofSize: 13)
+        aboutSubtitleLabel.textColor = .secondaryLabelColor
+        aboutFeedbackLabel.font = .systemFont(ofSize: 13)
+        aboutFeedbackLabel.textColor = .secondaryLabelColor
+        aboutFeedbackLabel.maximumNumberOfLines = 0
+        aboutFeedbackLabel.lineBreakMode = .byWordWrapping
+        aboutFeedbackLabel.alignment = .left
+        aboutFeedbackLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        aboutGitHubButton.bezelStyle = .rounded
+        aboutGitHubButton.target = self
+        aboutGitHubButton.action = #selector(openGitHub)
+        aboutGitHubButton.setContentHuggingPriority(.required, for: .horizontal)
+        aboutGitHubButton.setContentCompressionResistancePriority(.required, for: .horizontal)
+
+        let projectRow = NSStackView(views: [aboutFeedbackLabel, aboutGitHubButton])
+        projectRow.orientation = .horizontal
+        projectRow.alignment = .centerY
+        projectRow.spacing = 10
+
+        let stack = NSStackView(views: [aboutSubtitleLabel, projectRow])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 8
+        stack.translatesAutoresizingMaskIntoConstraints = false
+
+        aboutContainer.addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: aboutContainer.topAnchor),
+            stack.leadingAnchor.constraint(equalTo: aboutContainer.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: aboutContainer.trailingAnchor),
+            stack.bottomAnchor.constraint(lessThanOrEqualTo: aboutContainer.bottomAnchor),
+        ])
+    }
+
     private func updateProvidersSelectedCount() {
         providersSelectedCountLabel.stringValue = L.providersSelectedCount(
             selected: providerListView.selectedCount,
@@ -477,6 +525,10 @@ private final class SettingsViewController: NSViewController {
         hotkeyContainer.isHidden = tabControl.selectedSegment != 1
         languageContainer.isHidden = tabControl.selectedSegment != 2
         providersContainer.isHidden = tabControl.selectedSegment != 3
+        aboutContainer.isHidden = tabControl.selectedSegment != 4
+        let isAbout = tabControl.selectedSegment == 4
+        cancelButton.isHidden = isAbout
+        saveButton.isHidden = isAbout
     }
 
     // MARK: - Logic
@@ -510,6 +562,7 @@ private final class SettingsViewController: NSViewController {
         tabControl.setLabel(L.hotkey, forSegment: 1)
         tabControl.setLabel(L.languageTitle, forSegment: 2)
         tabControl.setLabel(L.providers, forSegment: 3)
+        tabControl.setLabel(L.about, forSegment: 4)
 
         for (index, mode) in ProxyMode.allCases.enumerated() {
             modeControl.setLabel(L.proxyModeTitle(mode), forSegment: index)
@@ -532,6 +585,10 @@ private final class SettingsViewController: NSViewController {
         providersHelpLabel.stringValue = L.providersHelp
         updateProvidersSelectedCount()
 
+        aboutSubtitleLabel.stringValue = L.aboutSubtitle
+        aboutFeedbackLabel.stringValue = L.aboutFeedback
+        aboutGitHubButton.title = L.aboutGitHub
+
         versionLabel.stringValue = L.appVersion(AppMetadata.current.version)
         saveButton.title = L.save
         cancelButton.title = L.cancel
@@ -549,6 +606,11 @@ private final class SettingsViewController: NSViewController {
 
     @objc private func modeChanged() {
         updateVisibility()
+    }
+
+    @objc private func openGitHub() {
+        guard let url = URL(string: "https://github.com/slightlee/quota") else { return }
+        NSWorkspace.shared.open(url)
     }
 
     @objc private func valueChanged() {}

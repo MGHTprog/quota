@@ -24,9 +24,13 @@ enum L {
     static var hotkey: String { tr(.hotkey) }
     static var languageTitle: String { tr(.language) }
     static var providers: String { tr(.providers) }
+    static var about: String { tr(.about) }
     static var save: String { tr(.save) }
     static var cancel: String { tr(.cancel) }
     static func appVersion(_ version: String) -> String { tr(.appVersion, version) }
+    static var aboutSubtitle: String { tr(.aboutSubtitle) }
+    static var aboutFeedback: String { tr(.aboutFeedback) }
+    static var aboutGitHub: String { tr(.aboutGitHub) }
 
     static var proxySubtitle: String { tr(.proxySubtitle) }
     static var proxyMode: String { tr(.proxyMode) }

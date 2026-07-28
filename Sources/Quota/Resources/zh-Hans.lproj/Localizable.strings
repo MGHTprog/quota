@@ -16,9 +16,13 @@
 "settings.tab.hotkey" = "快捷键";
 "settings.tab.language" = "语言";
 "settings.tab.providers" = "服务";
+"settings.tab.about" = "关于";
 "settings.button.save" = "保存";
 "settings.button.cancel" = "取消";
 "settings.app.version" = "版本 %@";
+"settings.about.subtitle" = "查看 AI 服务使用额度的小工具";
+"settings.about.feedback" = "开源项目，欢迎 Star";
+"settings.about.github" = "打开 GitHub";
 
 "settings.proxy.subtitle" = "选择代理模式以连接 Codex 服务";
 "settings.proxy.mode" = "模式";
