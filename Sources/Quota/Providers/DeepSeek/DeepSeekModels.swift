@@ -141,6 +141,7 @@ enum DeepSeekQuotaError: LocalizedError {
     case invalidResponse
     case requestFailed(Int)
     case insufficientBalance
+    case keychainWriteFailed
 
     var errorDescription: String? {
         switch self {
@@ -154,6 +155,8 @@ enum DeepSeekQuotaError: LocalizedError {
             return L.deepseekRequestFailed(statusCode)
         case .insufficientBalance:
             return L.deepseekInsufficientBalance
+        case .keychainWriteFailed:
+            return L.deepseekKeychainWriteFailed
         }
     }
 }
