@@ -84,6 +84,13 @@ private extension ProviderID {
     #expect(ProviderDisplayLimits.maxEnabledCount == 5)
 }
 
+@Test func defaultRegistryContainsMiMoAndDeepSeekExactlyOnce() {
+    let ids = ProviderRegistry.makeDefault().providerIDs
+    #expect(ids.filter { $0 == .mimo }.count == 1)
+    #expect(ids.filter { $0 == .deepseek }.count == 1)
+    #expect(ids.count == 5)
+}
+
 private final class FakeProvider: QuotaProvider {
     let id: ProviderID
     let displayName: String

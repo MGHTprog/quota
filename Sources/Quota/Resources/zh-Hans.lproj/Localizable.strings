@@ -7,6 +7,7 @@
 
 "quota.window.fiveHour" = "5小时";
 "quota.window.weekly" = "周限额";
+"quota.window.mimoTokenPlan" = "套餐额度";
 "quota.remaining" = "剩余";
 "quota.reset" = "重置";
 "quota.window.noData" = "暂无数据";
@@ -48,6 +49,14 @@
 "settings.providers.help" = "服务将按此顺序显示在弹窗顶部，并同步显示在 Touch Bar。";
 "settings.providers.selectedCount" = "已选择 %d/%d";
 "settings.providers.dragHint" = "拖动排序";
+"settings.providers.mimoCookie.label" = "MiMo Cookie";
+"settings.providers.mimoCookie.placeholder" = "粘贴控制台的 Cookie 请求头";
+"settings.providers.mimoCookie.help" = "MiMoCode 登录和区域会自动识别。小米额度接口还需要已登录 platform.xiaomimimo.com 的 Cookie，仅保存在 macOS 钥匙串中。";
+"settings.providers.mimoCookie.saveErrorTitle" = "无法保存 MiMo Cookie";
+"settings.providers.deepseekAPIKey.label" = "DeepSeek API Key";
+"settings.providers.deepseekAPIKey.placeholder" = "粘贴 DeepSeek API 密钥";
+"settings.providers.deepseekAPIKey.help" = "手动填写的密钥仅保存在 macOS 钥匙串中；仍兼容 DEEPSEEK_API_KEY 和 ~/.deepseek/api_key，且它们优先。";
+"settings.providers.deepseekAPIKey.saveErrorTitle" = "无法保存 DeepSeek API Key";
 
 "validation.proxy.title" = "代理地址无效";
 "validation.proxy.message" = "请输入完整的代理地址，例如 http://127.0.0.1:7890 或 socks5://127.0.0.1:1080。";
@@ -71,10 +80,18 @@
 "error.claudeTokenExpired" = "Claude Code 登录已过期，运行一次 claude 即可刷新";
 "error.claudeRequestFailed" = "Claude 请求失败（HTTP %d）";
 
+"error.mimoCodeNotSignedIn" = "MiMoCode 尚未登录小米，请先运行 mimo 并完成登录";
+"error.mimoCodeInvalidAuth" = "无法读取 MiMoCode auth.json 中的小米账号";
+"error.mimoCookieMissing" = "缺少 MiMo 控制台 Cookie，请在“设置 → 服务”中填写";
+"error.mimoUnauthorized" = "MiMo 控制台 Cookie 缺失或已过期";
+"error.mimoRequestFailed" = "MiMo 请求失败（代码 %d）";
+"error.mimoKeychainWriteFailed" = "无法将 MiMo 控制台 Cookie 保存到 macOS 钥匙串";
+
 "error.deepseekUnauthorized" = "DeepSeek API 密钥无效或已过期";
-"error.deepseekNotSignedIn" = "未找到 DeepSeek API 密钥。请设置 DEEPSEEK_API_KEY 环境变量或创建 ~/.deepseek/api_key 文件。";
+"error.deepseekNotSignedIn" = "未找到 DeepSeek API 密钥。请在“设置 → 服务”中填写，或设置 DEEPSEEK_API_KEY，或创建 ~/.deepseek/api_key 文件。";
 "error.deepseekRequestFailed" = "DeepSeek 请求失败（HTTP %d）";
 "error.deepseekInsufficientBalance" = "余额不足";
+"error.deepseekKeychainWriteFailed" = "无法将 DeepSeek API 密钥保存到 macOS 钥匙串";
 "quota.window.deepseekBalance" = "余额";
 
 "notification.severity.warning" = "不足";

@@ -77,7 +77,8 @@ final class ProviderRegistry {
         )
         let grok = GrokProvider(proxySettingsStore: proxySettingsStore)
         let claude = ClaudeProvider(proxySettingsStore: proxySettingsStore)
+        let mimo = MiMoProvider(proxySettingsStore: proxySettingsStore)
         let deepseek = DeepSeekProvider(proxySettingsStore: proxySettingsStore)
-        return ProviderRegistry(providers: [codex, grok, claude, deepseek])
+        return ProviderRegistry(providers: [codex, grok, claude, mimo, deepseek])
     }
 }

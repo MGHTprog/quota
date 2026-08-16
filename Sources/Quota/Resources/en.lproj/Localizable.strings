@@ -7,6 +7,7 @@
 
 "quota.window.fiveHour" = "5h";
 "quota.window.weekly" = "Weekly";
+"quota.window.mimoTokenPlan" = "Plan credits";
 "quota.remaining" = "Left";
 "quota.reset" = "Reset";
 "quota.window.noData" = "No data";
@@ -48,6 +49,14 @@
 "settings.providers.help" = "Services appear as popup tabs in this order, and on the Touch Bar when available.";
 "settings.providers.selectedCount" = "Selected %d/%d";
 "settings.providers.dragHint" = "Drag to reorder";
+"settings.providers.mimoCookie.label" = "MiMo Cookie";
+"settings.providers.mimoCookie.placeholder" = "Paste the console Cookie header";
+"settings.providers.mimoCookie.help" = "MiMoCode is detected automatically. Xiaomi's quota endpoint also requires the Cookie from a signed-in platform.xiaomimimo.com session; it is stored only in macOS Keychain.";
+"settings.providers.mimoCookie.saveErrorTitle" = "Could not save MiMo Cookie";
+"settings.providers.deepseekAPIKey.label" = "DeepSeek API Key";
+"settings.providers.deepseekAPIKey.placeholder" = "Paste the DeepSeek API key";
+"settings.providers.deepseekAPIKey.help" = "The saved key is stored only in macOS Keychain. DEEPSEEK_API_KEY and ~/.deepseek/api_key remain supported and take priority.";
+"settings.providers.deepseekAPIKey.saveErrorTitle" = "Could not save DeepSeek API Key";
 
 "validation.proxy.title" = "Invalid proxy address";
 "validation.proxy.message" = "Enter a complete proxy URL, such as http://127.0.0.1:7890 or socks5://127.0.0.1:1080.";
@@ -71,10 +80,18 @@
 "error.claudeTokenExpired" = "Claude Code login has expired. Run claude once to refresh it.";
 "error.claudeRequestFailed" = "Claude request failed (HTTP %d)";
 
+"error.mimoCodeNotSignedIn" = "MiMoCode is not signed in to Xiaomi. Run mimo and sign in first.";
+"error.mimoCodeInvalidAuth" = "Unable to read the Xiaomi account in MiMoCode auth.json";
+"error.mimoCookieMissing" = "MiMo console Cookie is missing. Add it in Settings → Providers.";
+"error.mimoUnauthorized" = "The MiMo console Cookie is missing or expired";
+"error.mimoRequestFailed" = "MiMo request failed (code %d)";
+"error.mimoKeychainWriteFailed" = "The MiMo console Cookie could not be saved to macOS Keychain";
+
 "error.deepseekUnauthorized" = "DeepSeek API key is invalid or expired";
-"error.deepseekNotSignedIn" = "DeepSeek API key not found. Set DEEPSEEK_API_KEY environment variable or create ~/.deepseek/api_key file.";
+"error.deepseekNotSignedIn" = "DeepSeek API key not found. Add it in Settings → Providers, set DEEPSEEK_API_KEY, or create ~/.deepseek/api_key.";
 "error.deepseekRequestFailed" = "DeepSeek request failed (HTTP %d)";
 "error.deepseekInsufficientBalance" = "Insufficient balance";
+"error.deepseekKeychainWriteFailed" = "The DeepSeek API key could not be saved to macOS Keychain";
 "quota.window.deepseekBalance" = "Balance";
 
 "notification.severity.warning" = "is low";

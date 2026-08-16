@@ -19,5 +19,6 @@ struct ProviderID: RawRepresentable, Hashable, Sendable, ExpressibleByStringLite
     static let codex = ProviderID(rawValue: "codex")
     static let grok = ProviderID(rawValue: "grok")
     static let claude = ProviderID(rawValue: "claude")
+    static let mimo = ProviderID(rawValue: "mimo")
     static let deepseek = ProviderID(rawValue: "deepseek")
 }
