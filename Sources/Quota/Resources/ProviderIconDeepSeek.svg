@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <!-- DeepSeek brand color: #4F46E5 (Indigo) -->
+  <rect width="512" height="512" rx="115" fill="#4F46E5"/>
+  <!-- 
+    DeepSeek logo: stylized "DS" letters in white
+    Designed to be recognizable at small sizes
+  -->
+  <g transform="translate(96 96) scale(2)" fill="white">
+    <!-- D -->
+    <path d="M32 32h48c17.7 0 32 14.3 32 32v64c0 17.7-14.3 32-32 32H32V32zm32 32v64h16c0 0 0 0 0 0s0 0 0 0V64H64z"/>
+    <!-- S -->
+    <path d="M128 32h48c17.7 0 32 14.3 32 32v32c0 17.7-14.3 32-32 32h-16v32h-32v-32h16v-32h-16c-8.8 0-16-7.2-16-16V64c0-8.8 7.2-16 16-16h16V32h-32z"/>
+  </g>
+</svg>

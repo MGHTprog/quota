@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <!-- 
+    DeepSeek tab icon: monochrome template image
+    Uses currentColor for tinting (system accent color)
+  -->
+  <g fill="currentColor">
+    <!-- D -->
+    <path d="M96 96h48c17.7 0 32 14.3 32 32v64c0 17.7-14.3 32-32 32H96V96zm32 32v64h16c0 0 0 0 0 0s0 0 0 0V128H128z"/>
+    <!-- S -->
+    <path d="M192 96h48c17.7 0 32 14.3 32 32v32c0 17.7-14.3 32-32 32h-16v32h-32v-32h16v-32h-16c-8.8 0-16-7.2-16-16V128c0-8.8 7.2-16 16-16h16V96h-32z"/>
+  </g>
+</svg>

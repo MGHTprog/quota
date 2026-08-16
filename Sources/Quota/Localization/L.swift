@@ -73,6 +73,12 @@ enum L {
     static var claudeNotSignedIn: String { tr(.claudeNotSignedIn) }
     static var claudeTokenExpired: String { tr(.claudeTokenExpired) }
     static func claudeRequestFailed(_ statusCode: Int) -> String { tr(.claudeRequestFailed, statusCode) }
+    
+    static var deepseekUnauthorized: String { tr(.deepseekUnauthorized) }
+    static var deepseekNotSignedIn: String { tr(.deepseekNotSignedIn) }
+    static func deepseekRequestFailed(_ statusCode: Int) -> String { tr(.deepseekRequestFailed, statusCode) }
+    static var deepseekInsufficientBalance: String { tr(.deepseekInsufficientBalance) }
+    static var deepseekBalanceTitle: String { tr(.deepseekBalanceTitle) }
 
     static func proxyModeTitle(_ mode: ProxyMode) -> String {
         switch mode {

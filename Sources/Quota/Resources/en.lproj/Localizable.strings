@@ -71,6 +71,12 @@
 "error.claudeTokenExpired" = "Claude Code login has expired. Run claude once to refresh it.";
 "error.claudeRequestFailed" = "Claude request failed (HTTP %d)";
 
+"error.deepseekUnauthorized" = "DeepSeek API key is invalid or expired";
+"error.deepseekNotSignedIn" = "DeepSeek API key not found. Set DEEPSEEK_API_KEY environment variable or create ~/.deepseek/api_key file.";
+"error.deepseekRequestFailed" = "DeepSeek request failed (HTTP %d)";
+"error.deepseekInsufficientBalance" = "Insufficient balance";
+"quota.window.deepseekBalance" = "Balance";
+
 "notification.severity.warning" = "is low";
 "notification.severity.urgent" = "is urgent";
 "notification.severity.critical" = "is nearly exhausted";

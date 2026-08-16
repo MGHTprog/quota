@@ -1,5 +1,7 @@
 # Quota
 
+> Windows port: see [Windows/README.zh-CN.md](Windows/README.zh-CN.md). The original macOS application remains unchanged.
+
 [简体中文](README.zh-CN.md)
 
 Quota is a lightweight macOS menu bar app for monitoring AI coding quota — [Codex](https://github.com/openai/codex), [Claude](https://claude.com/claude-code) (Claude Code), and [Grok](https://x.ai) (Grok Build / CLI).

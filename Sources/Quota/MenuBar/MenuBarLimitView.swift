@@ -519,6 +519,12 @@ final class MenuBarLimitView: NSView {
             return
         }
 
+        // Check if this is a money-based window (like DeepSeek)
+        if window.id == "balance" {
+            drawMoneyWindow(window, rect: rect)
+            return
+        }
+
         let clamped = min(max(window.remainingPercent, 0), 100)
         let percentText = "\(Int(clamped.rounded()))%"
         let percentTint = QuotaColors.status(
@@ -587,6 +593,64 @@ final class MenuBarLimitView: NSView {
 
         // Reset aligns with title text (secondary leading edge).
         window.resetText.draw(at: NSPoint(x: titleX, y: resetY), withAttributes: resetAttributes)
+    }
+
+    /// Money-based windows (like DeepSeek): show balance amount instead of percentage.
+    private func drawMoneyWindow(_ window: QuotaWindow, rect: NSRect) {
+        let titleAttributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 11, weight: .medium),
+            .foregroundColor: Palette.strongText
+        ]
+        let moneyAttributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .semibold),
+            .foregroundColor: QuotaColors.status(.healthy, surface: .menuBar, role: .text)
+        ]
+        let detailAttributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 10, weight: .regular),
+            .foregroundColor: Palette.secondaryText
+        ]
+
+        let titleX = rect.minX + Layout.textInset
+        let titleY = rect.maxY - 16
+        let detailY = rect.minY + 3
+
+        let iconRect = NSRect(
+            x: rect.minX,
+            y: titleY + 1,
+            width: Layout.rowIconSize,
+            height: Layout.rowIconSize
+        )
+        drawWindowIcon(windowID: window.id, rect: iconRect)
+
+        window.localizedTitle.draw(at: NSPoint(x: titleX, y: titleY), withAttributes: titleAttributes)
+
+        // Draw money amount on the right
+        let moneyText = window.scope ?? ""
+        let moneySize = (moneyText as NSString).size(withAttributes: moneyAttributes)
+        moneyText.draw(
+            at: NSPoint(x: rect.maxX - moneySize.width, y: titleY),
+            withAttributes: moneyAttributes
+        )
+
+        // Draw detail line (granted/toppedUp) if available
+        if let scope = window.scope, scope.contains("(") {
+            let detailText = scope
+            let detailSize = (detailText as NSString).size(withAttributes: detailAttributes)
+            detailText.draw(
+                at: NSPoint(x: titleX, y: detailY),
+                withAttributes: detailAttributes
+            )
+        }
+
+        // Draw a full progress bar (since we have balance)
+        let barRect = NSRect(
+            x: rect.minX,
+            y: rect.midY - 2,
+            width: rect.width,
+            height: Layout.barHeight
+        )
+        let barColor = QuotaColors.status(.healthy, surface: .menuBar, role: .fill)
+        drawProgressBar(in: barRect, percent: 100, color: barColor)
     }
 
     /// Unavailable windows: one quiet line — no empty bar / “Reset --” noise.

@@ -71,6 +71,12 @@
 "error.claudeTokenExpired" = "Claude Code 登录已过期，运行一次 claude 即可刷新";
 "error.claudeRequestFailed" = "Claude 请求失败（HTTP %d）";
 
+"error.deepseekUnauthorized" = "DeepSeek API 密钥无效或已过期";
+"error.deepseekNotSignedIn" = "未找到 DeepSeek API 密钥。请设置 DEEPSEEK_API_KEY 环境变量或创建 ~/.deepseek/api_key 文件。";
+"error.deepseekRequestFailed" = "DeepSeek 请求失败（HTTP %d）";
+"error.deepseekInsufficientBalance" = "余额不足";
+"quota.window.deepseekBalance" = "余额";
+
 "notification.severity.warning" = "不足";
 "notification.severity.urgent" = "告急";
 "notification.severity.critical" = "即将用尽";

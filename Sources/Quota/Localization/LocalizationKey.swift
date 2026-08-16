@@ -72,6 +72,12 @@ enum LocalizationKey: String {
     case claudeNotSignedIn = "error.claudeNotSignedIn"
     case claudeTokenExpired = "error.claudeTokenExpired"
     case claudeRequestFailed = "error.claudeRequestFailed"
+    
+    case deepseekUnauthorized = "error.deepseekUnauthorized"
+    case deepseekNotSignedIn = "error.deepseekNotSignedIn"
+    case deepseekRequestFailed = "error.deepseekRequestFailed"
+    case deepseekInsufficientBalance = "error.deepseekInsufficientBalance"
+    case deepseekBalanceTitle = "quota.window.deepseekBalance"
 
     case severityWarning = "notification.severity.warning"
     case severityUrgent = "notification.severity.urgent"

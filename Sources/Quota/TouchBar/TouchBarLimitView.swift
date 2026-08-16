@@ -105,18 +105,34 @@ private final class LimitRowView: NSView {
             return
         }
         titleLabel.stringValue = window.localizedTitle
-        percentLabel.stringValue = "\(L.remaining)\(Int(window.remainingPercent.rounded()))%"
-        resetLabel.stringValue = window.resetText
-
-        let filledCount = Int((window.remainingPercent / 5).rounded(.toNearestOrAwayFromZero))
-        let fill = QuotaColors.status(
-            remainingPercent: window.remainingPercent,
-            surface: .touchBar,
-            role: .fill
-        )
-        for (index, segment) in segments.enumerated() {
-            segment.isFilled = index < filledCount
-            segment.fillColor = fill
+        
+        // Check if this is a money-based window (like DeepSeek)
+        if window.id == "balance" {
+            // Show money amount instead of percentage
+            percentLabel.stringValue = window.scope ?? ""
+            resetLabel.stringValue = ""
+            
+            // For money-based windows, show all segments filled
+            let fill = QuotaColors.status(.healthy, surface: .touchBar, role: .fill)
+            for (index, segment) in segments.enumerated() {
+                segment.isFilled = true
+                segment.fillColor = fill
+            }
+        } else {
+            // Normal percentage-based display
+            percentLabel.stringValue = "\(L.remaining)\(Int(window.remainingPercent.rounded()))%"
+            resetLabel.stringValue = window.resetText
+            
+            let filledCount = Int((window.remainingPercent / 5).rounded(.toNearestOrAwayFromZero))
+            let fill = QuotaColors.status(
+                remainingPercent: window.remainingPercent,
+                surface: .touchBar,
+                role: .fill
+            )
+            for (index, segment) in segments.enumerated() {
+                segment.isFilled = index < filledCount
+                segment.fillColor = fill
+            }
         }
     }
 
