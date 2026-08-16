@@ -4,7 +4,7 @@
 
 [简体中文](README.zh-CN.md)
 
-Quota is a lightweight macOS menu bar app for monitoring AI coding quota — [Codex](https://github.com/openai/codex), [Claude](https://claude.com/claude-code) (Claude Code), and [Grok](https://x.ai) (Grok Build / CLI).
+Quota is a lightweight macOS menu bar app for monitoring AI coding quota — [Codex](https://github.com/openai/codex), [Claude](https://claude.com/claude-code), [Grok](https://x.ai), Xiaomi MiMo, and DeepSeek.
 
 <p align="center">
   <img src="https://img.shields.io/badge/platform-macOS%2014%2B-blue" alt="macOS 14+">
@@ -16,10 +16,12 @@ Quota is a lightweight macOS menu bar app for monitoring AI coding quota — [Co
 > **Codex:** requires Codex CLI, ChatGPT.app, or Codex.app, with an account that exposes rate limit data.  
 > **Claude:** requires Claude Code signed in (`claude`). Quota reads the login token from the macOS Keychain (via the system `security` tool — no permission prompt).  
 > **Grok:** requires Grok CLI signed in (`grok login`). Some networks need a proxy to reach Grok billing.
+> **MiMo:** requires MiMoCode signed in to Xiaomi plus a console Cookie entered in Settings → Providers.
+> **DeepSeek:** requires an API key entered in Settings → Providers, `DEEPSEEK_API_KEY`, or `~/.deepseek/api_key`.
 
 ## Features
 
-- Menu bar popup for **Codex** (5-hour + weekly limits, reset credits when available), **Claude** (5-hour session + weekly limits, including per-model weekly pools), and **Grok** (weekly usage pool)
+- Menu bar popup for **Codex**, **Claude**, **Grok**, **MiMo** Token Plan credits, and **DeepSeek** balance
 - Provider filter tabs: All / each enabled provider; enable up to 5 providers and drag to reorder in Settings
 - First enabled provider in the list is primary: leftmost provider tab, status-item summary, and Touch Bar when available
 - macOS notifications when remaining quota is low (per provider / window)
@@ -91,6 +93,15 @@ After launch, Quota appears in the menu bar. Wait a few seconds for the first re
 |----------|-------------|--------------|
 | **Codex** | Local `codex app-server` (`account/rateLimits/read`) | 5-hour + weekly windows; reset credits when available |
 | **Grok** | Local `~/.grok/auth.json` + Grok CLI billing API | Weekly usage window (same source as Grok CLI `/usage`) |
+| **Claude** | Claude Code OAuth login + Anthropic usage API | 5-hour session and weekly pools |
+| **MiMo** | MiMoCode account + Xiaomi console Cookie | Combined plan and compensation Credits |
+| **DeepSeek** | DeepSeek API key + `/user/balance` | Current account balance |
+
+#### MiMo and DeepSeek credentials
+
+- **MiMo:** sign in with MiMoCode, then paste the complete Cookie request header from a signed-in `platform.xiaomimimo.com` request into **Settings → Providers → MiMo Cookie**.
+- **DeepSeek:** paste an API key into **Settings → Providers → DeepSeek API Key**. `DEEPSEEK_API_KEY` and `~/.deepseek/api_key` remain supported and take priority.
+- Manually entered credentials are stored only in macOS Keychain. Clearing a field removes its saved value.
 
 ### Notification Thresholds
 
@@ -155,13 +166,15 @@ The DMG includes a Finder installer layout with `Quota.app` on the left and an `
 
 Quota reads quota data on your machine through local CLI/login state and provider endpoints. It does not upload quota or account data to any third-party analytics service of its own.
 
-Proxy, hotkey, language, and provider settings are stored locally in macOS app preferences.
+Proxy, hotkey, language, and provider settings are stored locally in macOS app preferences. Manually entered MiMo and DeepSeek credentials are stored separately in macOS Keychain.
 
 ## Troubleshooting
 
 - **No menu bar icon:** launch `Quota.app` from `Applications`, not the raw `.build/release/Quota` binary.
 - **No Codex data:** install Codex CLI, ChatGPT.app, or Codex.app; sign in with an account that exposes rate limits; ensure `codex` is on `PATH` or the app is in `/Applications`.
 - **No Grok data:** run `grok login` so `~/.grok/auth.json` exists; if requests time out, enable a proxy (Settings → Proxy) on restricted networks.
+- **No MiMo data:** sign in with MiMoCode and refresh the Xiaomi console Cookie in Settings → Providers.
+- **No DeepSeek data:** enter a valid API key in Settings → Providers or configure one of the supported fallback sources.
 - **No notifications:** allow notifications for Quota in System Settings (requires a proper `.app` bundle).
 
 ## Requirements
@@ -169,6 +182,8 @@ Proxy, hotkey, language, and provider settings are stored locally in macOS app p
 - macOS 14 Sonoma or later
 - For Codex: Codex CLI, ChatGPT.app, or Codex.app + account with rate limit data
 - For Grok: Grok CLI signed in (`grok login`)
+- For MiMo: MiMoCode signed in to Xiaomi and a valid console Cookie
+- For DeepSeek: a valid DeepSeek API key
 
 ## Development
 
