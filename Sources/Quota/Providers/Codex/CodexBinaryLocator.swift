@@ -3,18 +3,30 @@ import Foundation
 /// Resolves the `codex` executable path used to start app-server.
 struct CodexBinaryLocator {
     private let fileManager: FileManager
-    private let bundledBinaryURLs = [
+    private static let defaultBundledBinaryURLs = [
+        // ChatGPT/Codex 0.133+ ship the CLI inside the `codex-cli` resource bundle.
+        URL(fileURLWithPath: "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex"),
+        URL(fileURLWithPath: "/Applications/Codex.app/Contents/Resources/codex-cli/bin/codex"),
+        // Keep the legacy locations for older desktop-app releases.
         URL(fileURLWithPath: "/Applications/ChatGPT.app/Contents/Resources/codex"),
         URL(fileURLWithPath: "/Applications/Codex.app/Contents/Resources/codex")
     ]
+    private let bundledBinaryURLs: [URL]
+    private let cliPathResolver: () -> URL?
 
-    init(fileManager: FileManager = .default) {
+    init(
+        fileManager: FileManager = .default,
+        bundledBinaryURLs: [URL] = Self.defaultBundledBinaryURLs,
+        cliPathResolver: @escaping () -> URL? = CodexBinaryLocator.findCLI
+    ) {
         self.fileManager = fileManager
+        self.bundledBinaryURLs = bundledBinaryURLs
+        self.cliPathResolver = cliPathResolver
     }
 
     /// Locates the codex binary by priority: CLI first, then ChatGPT.app, then legacy Codex.app.
     func locate() -> URL {
-        if let cliPath = findCLI() {
+        if let cliPath = cliPathResolver() {
             debugLog("[Quota] found CLI codex at \(cliPath)")
             return cliPath
         }
@@ -29,7 +41,7 @@ struct CodexBinaryLocator {
     }
 
     /// Locates the CLI path through the which command.
-    private func findCLI() -> URL? {
+    private static func findCLI() -> URL? {
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/usr/bin/which")
         task.arguments = ["codex"]
