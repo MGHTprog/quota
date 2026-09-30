@@ -67,6 +67,6 @@ struct CodexBinaryLocator {
         }
 
         let url = URL(fileURLWithPath: output)
-        return fileManager.isExecutableFile(atPath: url.path) ? url : nil
+        return FileManager.default.isExecutableFile(atPath: url.path) ? url : nil
     }
 }
