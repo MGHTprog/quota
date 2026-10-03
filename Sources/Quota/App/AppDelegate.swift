@@ -32,7 +32,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             providerConfig: providerConfig
         )
     }
-    private lazy var menuBarController = MenuBarController(service: quotaService) { [weak self] in
+    private lazy var menuBarController = MenuBarController(service: quotaService, setTouchBarAlwaysVisible: { [weak self] visible in
+        self?.touchBarController.setAlwaysVisible(visible)
+    }) { [weak self] in
         self?.showSettings()
     }
     private let hotkeyManager = GlobalHotkeyManager()

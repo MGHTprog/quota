@@ -3,6 +3,7 @@ enum LocalizationKey: String {
     case settings = "settings.title"
     case refresh = "menu.refresh"
     case quit = "menu.quit"
+    case keepVisible = "menu.keepVisible"
     case quotaTooltip = "quota.tooltip"
     case errorPrefix = "error.prefix"
     case refreshFailedPrefix = "refresh.failed.prefix"

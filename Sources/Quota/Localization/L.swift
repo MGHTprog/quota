@@ -9,6 +9,7 @@ enum L {
     static var settings: String { tr(.settings) }
     static var refresh: String { tr(.refresh) }
     static var quit: String { tr(.quit) }
+    static var keepVisible: String { tr(.keepVisible) }
     static var quotaTooltip: String { tr(.quotaTooltip) }
     static var errorPrefix: String { tr(.errorPrefix) }
     static var refreshFailedPrefix: String { tr(.refreshFailedPrefix) }

@@ -11,6 +11,7 @@ final class TouchBarController: NSObject, NSTouchBarDelegate, QuotaServiceObserv
     private let presenter: SystemModalTouchBarPresenter
     private let contentView = TouchBarLimitView(frame: NSRect(x: 0, y: 0, width: 450, height: 26))
     private var activeApplicationObserver: NSObjectProtocol?
+    private var alwaysVisible = UserDefaults.standard.bool(forKey: "quota.touchBarAlwaysVisible")
     private lazy var touchBar: NSTouchBar = {
         let touchBar = NSTouchBar()
         touchBar.delegate = self
@@ -40,6 +41,11 @@ final class TouchBarController: NSObject, NSTouchBarDelegate, QuotaServiceObserv
 
     func reloadLocalizedText() {
         contentView.reloadLocalizedText()
+    }
+
+    func setAlwaysVisible(_ visible: Bool) {
+        alwaysVisible = visible
+        updatePresentation(for: currentActiveApplication())
     }
 
     func touchBar(_ touchBar: NSTouchBar, makeItemForIdentifier identifier: NSTouchBarItem.Identifier) -> NSTouchBarItem? {
@@ -101,7 +107,7 @@ final class TouchBarController: NSObject, NSTouchBarDelegate, QuotaServiceObserv
     }
 
     private func updatePresentation(for application: ActiveApplicationInfo) {
-        if presentationPolicy.shouldShow(for: application) {
+        if presentationPolicy.shouldShow(for: application, alwaysVisible: alwaysVisible) {
             presenter.present(touchBar)
         } else {
             presenter.dismiss(touchBar)

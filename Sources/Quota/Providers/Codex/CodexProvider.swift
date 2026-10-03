@@ -6,8 +6,9 @@ import Foundation
 /// `QuotaProvider` / `ProviderQuotaState`.
 final class CodexProvider: QuotaProvider {
     let id: ProviderID = .codex
-    /// User-facing brand name for this provider (owned here, not on `ProviderID`).
-    let displayName = "Codex"
+    /// Keep the provider's stable ID while showing its most recently used model.
+    var displayName: String { modelNameReader.displayName(fallback: Self.configuredModelDisplayName()) }
+    private let modelNameReader = CodexModelNameReader()
     let iconResourceName: String? = "ProviderIconCodex"
     let tabIconResourceName: String? = "TabIconCodex"
     let fallbackGlyph = "C"
@@ -15,6 +16,35 @@ final class CodexProvider: QuotaProvider {
 
     private let client: CodexAppServerClient
     private var lastKnownPlan: String?
+
+    private static func configuredModelDisplayName() -> String {
+        let home = ProcessInfo.processInfo.environment["CODEX_HOME"].map {
+            URL(fileURLWithPath: $0, isDirectory: true)
+        } ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex")
+        guard let config = try? String(contentsOf: home.appendingPathComponent("config.toml"), encoding: .utf8) else {
+            return "GPT"
+        }
+        for line in config.components(separatedBy: .newlines) {
+            let line = line.trimmingCharacters(in: .whitespaces)
+            if line.hasPrefix("[") { break }
+            let fields = line.split(separator: "=", maxSplits: 1).map {
+                $0.trimmingCharacters(in: .whitespaces)
+            }
+            guard fields.count == 2, fields[0] == "model",
+                  let quote = fields[1].first, quote == "\"" || quote == "'",
+                  let end = fields[1].dropFirst().firstIndex(of: quote) else { continue }
+            let model = String(fields[1][fields[1].index(after: fields[1].startIndex)..<end])
+            guard !model.isEmpty else { continue }
+            if model.hasPrefix("gpt-") {
+                let components = model.dropFirst(4).split(separator: "-")
+                return "GPT-" + components.enumerated().map { index, part in
+                    index == 0 ? String(part) : part.capitalized
+                }.joined(separator: " ")
+            }
+            return model
+        }
+        return "GPT"
+    }
 
     init(
         proxySettingsStore: ProxySettingsStore = .shared,

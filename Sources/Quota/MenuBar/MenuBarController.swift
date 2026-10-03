@@ -5,6 +5,7 @@ import AppKit
 final class MenuBarController: NSObject, QuotaServiceObserver {
     private let service: QuotaService
     private let showSettings: () -> Void
+    private let setTouchBarAlwaysVisible: (Bool) -> Void
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let contentView = MenuBarLimitView(
         frame: NSRect(x: 0, y: 0, width: MenuBarLimitView.preferredSize.width, height: MenuBarLimitView.preferredSize.height)
@@ -15,10 +16,12 @@ final class MenuBarController: NSObject, QuotaServiceObserver {
     private var closeEventMonitor: Any?
     private var keyEventMonitor: Any?
     private var usesIconOnly = false
+    private var isTouchBarAlwaysVisible = UserDefaults.standard.bool(forKey: "quota.touchBarAlwaysVisible")
 
-    init(service: QuotaService, showSettings: @escaping () -> Void) {
+    init(service: QuotaService, setTouchBarAlwaysVisible: @escaping (Bool) -> Void = { _ in }, showSettings: @escaping () -> Void) {
         self.service = service
         self.showSettings = showSettings
+        self.setTouchBarAlwaysVisible = setTouchBarAlwaysVisible
     }
 
     func start() {
@@ -41,6 +44,14 @@ final class MenuBarController: NSObject, QuotaServiceObserver {
         contentView.onRefresh = { [weak self] in self?.refresh() }
         contentView.onQuit = { [weak self] in self?.quit() }
         contentView.onDismiss = { [weak self] in self?.closePanel() }
+        contentView.isPinned = isTouchBarAlwaysVisible
+        contentView.onTogglePin = { [weak self] in
+            guard let self else { return }
+            self.isTouchBarAlwaysVisible.toggle()
+            UserDefaults.standard.set(self.isTouchBarAlwaysVisible, forKey: "quota.touchBarAlwaysVisible")
+            self.contentView.isPinned = self.isTouchBarAlwaysVisible
+            self.setTouchBarAlwaysVisible(self.isTouchBarAlwaysVisible)
+        }
         contentView.onPreferredSizeChange = { [weak self] in
             self?.resizePanelToFitContent(reposition: true)
         }

@@ -1,6 +1,7 @@
 "settings.title" = "Settings";
 "menu.refresh" = "Refresh";
 "menu.quit" = "Quit";
+"menu.keepVisible" = "Keep visible";
 "quota.tooltip" = "Quota";
 "error.prefix" = "Error";
 "refresh.failed.prefix" = "Refresh failed";

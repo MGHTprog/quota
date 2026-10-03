@@ -31,7 +31,8 @@ struct ActiveApplicationTouchBarPolicy {
     }
 
     /// `true` when the frontmost app is one where quota context is useful.
-    func shouldShow(for application: ActiveApplicationInfo) -> Bool {
+    func shouldShow(for application: ActiveApplicationInfo, alwaysVisible: Bool = false) -> Bool {
+        if alwaysVisible { return true }
         if let bundleIdentifier = application.bundleIdentifier,
            allowedBundleIdentifiers.contains(bundleIdentifier) {
             return true

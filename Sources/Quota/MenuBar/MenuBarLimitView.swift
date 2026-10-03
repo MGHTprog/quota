@@ -3,7 +3,7 @@ import AppKit
 /// Provider-driven quota panel shown from the menu bar.
 final class MenuBarLimitView: NSView {
     private enum Layout {
-        static let width: CGFloat = 260
+        static let width: CGFloat = 300
         /// Primary content leading edge (logo, progress bar, section rule).
         static let outerPadding: CGFloat = 14
         /// Segmented filter control (connected cells, not separate chips).
@@ -95,6 +95,8 @@ final class MenuBarLimitView: NSView {
     var onRefresh: (() -> Void)?
     var onQuit: (() -> Void)?
     var onDismiss: (() -> Void)?
+    var onTogglePin: (() -> Void)?
+    var isPinned = false { didSet { needsDisplay = true } }
     /// Called when the panel should resize (e.g. switching All / single provider).
     var onPreferredSizeChange: (() -> Void)?
 
@@ -207,6 +209,8 @@ final class MenuBarLimitView: NSView {
             onRefresh?()
         case .quit:
             onQuit?()
+        case .pin:
+            onTogglePin?()
         }
     }
 
@@ -407,6 +411,7 @@ final class MenuBarLimitView: NSView {
         let actions: [(FooterAction, String, String?, FooterWeight)] = [
             (.settings, "gearshape", L.settings, .normal),
             (.refresh, "arrow.clockwise", L.refresh, .normal),
+            (.pin, isPinned ? "pin.fill" : "pin", L.keepVisible, .normal),
             (.quit, "power", L.quit, .quiet)
         ]
 
@@ -417,13 +422,17 @@ final class MenuBarLimitView: NSView {
         let totalWidth = metrics.reduce(CGFloat.zero) { $0 + $1.4 }
         let gaps = CGFloat(max(0, metrics.count - 1))
         let available = bounds.width - Layout.outerPadding * 2
-        let gap = metrics.count > 1 ? max(12, (available - totalWidth) / gaps) : 0
+        let gap = metrics.count > 1 ? max(6, (available - totalWidth) / gaps) : 0
         var x = Layout.outerPadding + max(0, (available - totalWidth - gap * gaps) / 2)
         let itemHeight: CGFloat = 22
         let y: CGFloat = 4
 
         for item in metrics {
             let rect = NSRect(x: x, y: y, width: item.4, height: itemHeight)
+            if item.0 == .pin, isPinned {
+                Palette.selectedTab.setFill()
+                NSBezierPath(roundedRect: rect.insetBy(dx: -3, dy: 0), xRadius: 4, yRadius: 4).fill()
+            }
             drawFooterButton(
                 systemSymbol: item.1,
                 title: item.2,
@@ -475,14 +484,18 @@ final class MenuBarLimitView: NSView {
     }
 
     private func drawHeader(identity: ProviderIdentity, badges: [ProviderBadge], rect: NSRect) {
-        let titleAttributes: [NSAttributedString.Key: Any] = [
+        var titleAttributes: [NSAttributedString.Key: Any] = [
             .font: NSFont.systemFont(ofSize: 13, weight: .semibold),
             .foregroundColor: Palette.strongText
         ]
         let title = identity.displayName
-        let titleSize = (title as NSString).size(withAttributes: titleAttributes)
+        let titleStyle = NSMutableParagraphStyle()
+        titleStyle.lineBreakMode = .byTruncatingTail
+        titleAttributes[.paragraphStyle] = titleStyle
+        let measuredTitle = (title as NSString).size(withAttributes: titleAttributes)
+        let titleSize = NSSize(width: min(measuredTitle.width, rect.width), height: measuredTitle.height)
         title.draw(
-            at: NSPoint(x: rect.minX, y: rect.midY - titleSize.height / 2),
+            in: NSRect(x: rect.minX, y: rect.midY - titleSize.height / 2, width: titleSize.width, height: titleSize.height),
             withAttributes: titleAttributes
         )
 
@@ -491,7 +504,7 @@ final class MenuBarLimitView: NSView {
         let pillFill = dark ? 0.14 : 0.08
 
         // Plan / membership: small neutral pill (green reserved for remaining %).
-        if let plan = identity.plan, !plan.isEmpty {
+        if let plan = identity.plan, !plan.isEmpty, x + pillWidth(plan) <= rect.maxX {
             x = drawPill(
                 text: plan,
                 x: x,
@@ -503,6 +516,7 @@ final class MenuBarLimitView: NSView {
 
         // Codex reset credits etc. — keep as quiet secondary pills (not green / not button-like).
         for badge in badges.prefix(2) {
+            guard x + pillWidth(badge.localizedText) <= rect.maxX else { break }
             x = drawPill(
                 text: badge.localizedText,
                 x: x,
@@ -791,6 +805,10 @@ final class MenuBarLimitView: NSView {
         return rect.maxX + 5
     }
 
+    private func pillWidth(_ text: String) -> CGFloat {
+        (text as NSString).size(withAttributes: [.font: NSFont.systemFont(ofSize: 9, weight: .medium)]).width + 10
+    }
+
     /// Menu-bar rows follow each provider's real windows.
     private func displayWindows(for option: ProviderSettingsOption) -> [QuotaWindow] {
         if let state = statesByProvider[option.id], !state.windows.isEmpty {
@@ -967,6 +985,7 @@ private enum FooterAction {
     case settings
     case refresh
     case quit
+    case pin
 }
 
 private extension NSAppearance {
