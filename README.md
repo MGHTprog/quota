@@ -8,7 +8,7 @@ Quota is a lightweight macOS menu bar app for monitoring AI coding quota — [Co
 
 <p align="center">
   <img src="https://img.shields.io/badge/platform-macOS%2014%2B-blue" alt="macOS 14+">
-  <img src="https://img.shields.io/badge/Swift-5.9+-orange" alt="Swift 5.9+">
+  <img src="https://img.shields.io/badge/Swift-6.2+-orange" alt="Swift 6.2+">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License">
 </p>
 
@@ -16,7 +16,7 @@ Quota is a lightweight macOS menu bar app for monitoring AI coding quota — [Co
 > **Codex:** requires Codex CLI, ChatGPT.app, or Codex.app, with an account that exposes rate limit data.  
 > **Claude:** requires Claude Code signed in (`claude`). Quota reads the login token from the macOS Keychain (via the system `security` tool — no permission prompt).  
 > **Grok:** requires Grok CLI signed in (`grok login`). Some networks need a proxy to reach Grok billing.
-> **MiMo:** requires MiMoCode signed in to Xiaomi plus a console Cookie entered in Settings → Providers.
+> **MiMo:** sign in to Xiaomi's console in your default browser; leave the Cookie field empty for automatic import.
 > **DeepSeek:** requires an API key entered in Settings → Providers, `DEEPSEEK_API_KEY`, or `~/.deepseek/api_key`.
 
 ## Features
@@ -94,12 +94,12 @@ After launch, Quota appears in the menu bar. Wait a few seconds for the first re
 | **Codex** | Local `codex app-server` (`account/rateLimits/read`) | 5-hour + weekly windows; reset credits when available |
 | **Grok** | Local `~/.grok/auth.json` + Grok CLI billing API | Weekly usage window (same source as Grok CLI `/usage`) |
 | **Claude** | Claude Code OAuth login + Anthropic usage API | 5-hour session and weekly pools |
-| **MiMo** | MiMoCode account + Xiaomi console Cookie | Combined plan and compensation Credits |
+| **MiMo** | Default browser login or manual console Cookie | Combined plan and compensation Credits |
 | **DeepSeek** | DeepSeek API key + `/user/balance` | Current account balance |
 
 #### MiMo and DeepSeek credentials
 
-- **MiMo:** sign in with MiMoCode, then paste the complete Cookie request header from a signed-in `platform.xiaomimimo.com` request into **Settings → Providers → MiMo Cookie**.
+- **MiMo:** sign in at `platform.xiaomimimo.com` in your system default browser, then enable MiMo. Quota uses SweetCookieKit, also used by [CodexBar](https://github.com/steipete/CodexBar). Chromium may request Keychain access; Safari may require Full Disk Access. An optional manual Cookie in **Settings → Providers** overrides automatic import; clear it to resume automatic import.
 - **DeepSeek:** paste an API key into **Settings → Providers → DeepSeek API Key**. `DEEPSEEK_API_KEY` and `~/.deepseek/api_key` remain supported and take priority.
 - Manually entered credentials are stored only in macOS Keychain. Clearing a field removes its saved value.
 
@@ -173,7 +173,7 @@ Proxy, hotkey, language, and provider settings are stored locally in macOS app p
 - **No menu bar icon:** launch `Quota.app` from `Applications`, not the raw `.build/release/Quota` binary.
 - **No Codex data:** install Codex CLI, ChatGPT.app, or Codex.app; sign in with an account that exposes rate limits; ensure `codex` is on `PATH` or the app is in `/Applications`.
 - **No Grok data:** run `grok login` so `~/.grok/auth.json` exists; if requests time out, enable a proxy (Settings → Proxy) on restricted networks.
-- **No MiMo data:** sign in with MiMoCode and refresh the Xiaomi console Cookie in Settings → Providers.
+- **No MiMo data:** sign in to Xiaomi's console in the default browser and allow cookie access, then refresh.
 - **No DeepSeek data:** enter a valid API key in Settings → Providers or configure one of the supported fallback sources.
 - **No notifications:** allow notifications for Quota in System Settings (requires a proper `.app` bundle).
 
@@ -182,7 +182,7 @@ Proxy, hotkey, language, and provider settings are stored locally in macOS app p
 - macOS 14 Sonoma or later
 - For Codex: Codex CLI, ChatGPT.app, or Codex.app + account with rate limit data
 - For Grok: Grok CLI signed in (`grok login`)
-- For MiMo: MiMoCode signed in to Xiaomi and a valid console Cookie
+- For MiMo: default browser signed in to Xiaomi's console, or a valid manual console Cookie
 - For DeepSeek: a valid DeepSeek API key
 
 ## Development

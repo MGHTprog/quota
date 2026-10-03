@@ -50,8 +50,8 @@
 "settings.providers.selectedCount" = "Selected %d/%d";
 "settings.providers.dragHint" = "Drag to reorder";
 "settings.providers.mimoCookie.label" = "MiMo Cookie";
-"settings.providers.mimoCookie.placeholder" = "Paste the console Cookie header";
-"settings.providers.mimoCookie.help" = "MiMoCode is detected automatically. Xiaomi's quota endpoint also requires the Cookie from a signed-in platform.xiaomimimo.com session; it is stored only in macOS Keychain.";
+"settings.providers.mimoCookie.placeholder" = "Leave empty to use your default browser";
+"settings.providers.mimoCookie.help" = "Automatically reads the default browser's login at platform.xiaomimimo.com. Chromium may request Keychain access; Safari may need Full Disk Access. Manual cookies are stored in Keychain.";
 "settings.providers.mimoCookie.saveErrorTitle" = "Could not save MiMo Cookie";
 "settings.providers.deepseekAPIKey.label" = "DeepSeek API Key";
 "settings.providers.deepseekAPIKey.placeholder" = "Paste the DeepSeek API key";
@@ -82,7 +82,7 @@
 
 "error.mimoCodeNotSignedIn" = "MiMoCode is not signed in to Xiaomi. Run mimo and sign in first.";
 "error.mimoCodeInvalidAuth" = "Unable to read the Xiaomi account in MiMoCode auth.json";
-"error.mimoCookieMissing" = "MiMo console Cookie is missing. Add it in Settings → Providers.";
+"error.mimoCookieMissing" = "Sign in at platform.xiaomimimo.com in your default browser, or enter a Cookie in Settings.";
 "error.mimoUnauthorized" = "The MiMo console Cookie is missing or expired";
 "error.mimoRequestFailed" = "MiMo request failed (code %d)";
 "error.mimoKeychainWriteFailed" = "The MiMo console Cookie could not be saved to macOS Keychain";

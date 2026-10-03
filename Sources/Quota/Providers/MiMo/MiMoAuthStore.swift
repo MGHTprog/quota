@@ -6,13 +6,12 @@ struct MiMoCodeAccount: Equatable {
     var baseURL: URL
 }
 
-/// Reads MiMoCode's local account and Quota's Xiaomi console session cookie.
+/// Reads optional MiMoCode metadata and the Xiaomi console session cookie.
 ///
 /// MiMoCode stores the Token Plan API key in `auth.json`, but Xiaomi's quota
 /// endpoint is protected by the web console session and rejects that `tp-...`
-/// key. Quota therefore only uses MiMoCode to discover the signed-in Xiaomi
-/// account/region; the console cookie is stored separately in the macOS
-/// Keychain.
+/// key. Manual console cookies are stored in Keychain; otherwise the session
+/// is imported from the default browser on each refresh.
 final class MiMoAuthStore {
     static let shared = MiMoAuthStore()
 
@@ -37,13 +36,15 @@ final class MiMoAuthStore {
     private let environment: [String: String]
     private let keychainReader: () -> String?
     private let keychainWriter: (String?) throws -> Void
+    private let browserCookieReader: () throws -> String
 
     init(
         fileManager: FileManager = .default,
         homeDirectory: URL? = nil,
         environment: [String: String] = ProcessInfo.processInfo.environment,
         keychainReader: (() -> String?)? = nil,
-        keychainWriter: ((String?) throws -> Void)? = nil
+        keychainWriter: ((String?) throws -> Void)? = nil,
+        browserCookieReader: @escaping () throws -> String = MiMoBrowserCookieImporter.loadCookie
     ) {
         self.fileManager = fileManager
         self.environment = environment
@@ -66,6 +67,7 @@ final class MiMoAuthStore {
 
         self.keychainReader = keychainReader ?? Self.readKeychainCookie
         self.keychainWriter = keychainWriter ?? Self.writeKeychainCookie
+        self.browserCookieReader = browserCookieReader
     }
 
     /// Confirms MiMoCode has a Xiaomi account and returns its configured region.
@@ -96,9 +98,15 @@ final class MiMoAuthStore {
         return MiMoCodeAccount(baseURL: baseURL)
     }
 
-    /// Environment override is useful for `swift run`; packaged apps use Keychain.
+    /// Explicit credentials override the default browser's current login.
     func loadSessionCookie() throws -> String {
-        let rawValue = environment["XIAOMI_MIMO_SESSION_COOKIE"] ?? keychainReader()
+        let rawValue: String?
+        if let manual = environment["XIAOMI_MIMO_SESSION_COOKIE"] ?? keychainReader(),
+           !manual.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            rawValue = manual
+        } else {
+            rawValue = try browserCookieReader()
+        }
         guard let cookie = Self.normalizeCookie(rawValue), !cookie.isEmpty else {
             throw MiMoQuotaError.sessionCookieMissing
         }

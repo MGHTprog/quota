@@ -1,6 +1,6 @@
 import Foundation
 
-/// Xiaomi MiMo provider: reads Token Plan credits for the MiMoCode account.
+/// Xiaomi MiMo provider: reads Token Plan credits for the console account.
 final class MiMoProvider: QuotaProvider {
     let id: ProviderID = .mimo
     let displayName = "MiMo"

@@ -53,7 +53,9 @@ final class MiMoUsageClient {
         let account: MiMoCodeAccount
         let cookie: String
         do {
-            account = try authStore.loadMiMoCodeAccount()
+            account = (try? authStore.loadMiMoCodeAccount()) ?? MiMoCodeAccount(
+                baseURL: URL(string: "https://token-plan-cn.xiaomimimo.com/v1")!
+            )
             cookie = try authStore.loadSessionCookie()
         } catch {
             completion(.failure(error))

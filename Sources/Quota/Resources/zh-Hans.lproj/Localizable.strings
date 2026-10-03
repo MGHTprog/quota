@@ -50,8 +50,8 @@
 "settings.providers.selectedCount" = "已选择 %d/%d";
 "settings.providers.dragHint" = "拖动排序";
 "settings.providers.mimoCookie.label" = "MiMo Cookie";
-"settings.providers.mimoCookie.placeholder" = "粘贴控制台的 Cookie 请求头";
-"settings.providers.mimoCookie.help" = "MiMoCode 登录和区域会自动识别。小米额度接口还需要已登录 platform.xiaomimimo.com 的 Cookie，仅保存在 macOS 钥匙串中。";
+"settings.providers.mimoCookie.placeholder" = "留空以自动读取默认浏览器";
+"settings.providers.mimoCookie.help" = "默认自动读取浏览器中的小米登录状态，请先登录 platform.xiaomimimo.com。Chrome 等浏览器可能请求钥匙串授权，Safari 可能需要完全磁盘访问权限。手动 Cookie 仅保存在钥匙串中。";
 "settings.providers.mimoCookie.saveErrorTitle" = "无法保存 MiMo Cookie";
 "settings.providers.deepseekAPIKey.label" = "DeepSeek API Key";
 "settings.providers.deepseekAPIKey.placeholder" = "粘贴 DeepSeek API 密钥";
@@ -82,7 +82,7 @@
 
 "error.mimoCodeNotSignedIn" = "MiMoCode 尚未登录小米，请先运行 mimo 并完成登录";
 "error.mimoCodeInvalidAuth" = "无法读取 MiMoCode auth.json 中的小米账号";
-"error.mimoCookieMissing" = "缺少 MiMo 控制台 Cookie，请在“设置 → 服务”中填写";
+"error.mimoCookieMissing" = "请在默认浏览器登录 platform.xiaomimimo.com；也可在设置中填写 Cookie";
 "error.mimoUnauthorized" = "MiMo 控制台 Cookie 缺失或已过期";
 "error.mimoRequestFailed" = "MiMo 请求失败（代码 %d）";
 "error.mimoKeychainWriteFailed" = "无法将 MiMo 控制台 Cookie 保存到 macOS 钥匙串";

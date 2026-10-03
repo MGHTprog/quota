@@ -53,6 +53,10 @@ else
   exit 1
 fi
 
+if [[ -d "$BUILD_DIR/SweetCookieKit_SweetCookieKit.bundle" ]]; then
+  cp -R "$BUILD_DIR/SweetCookieKit_SweetCookieKit.bundle" "$APP_DIR/Contents/Resources/"
+fi
+
 if [[ -d "$ICONSET_DIR" ]]; then
   iconutil -c icns "$ICONSET_DIR" -o "$ICON_FILE"
 else

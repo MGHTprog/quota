@@ -6,7 +6,7 @@ Quota 是一个轻量级 macOS 菜单栏应用，用于查看 AI 编程额度 �
 
 <p align="center">
   <img src="https://img.shields.io/badge/platform-macOS%2014%2B-blue" alt="macOS 14+">
-  <img src="https://img.shields.io/badge/Swift-5.9+-orange" alt="Swift 5.9+">
+  <img src="https://img.shields.io/badge/Swift-6.2+-orange" alt="Swift 6.2+">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License">
 </p>
 
@@ -14,7 +14,7 @@ Quota 是一个轻量级 macOS 菜单栏应用，用于查看 AI 编程额度 �
 > **Codex：** 需要 Codex CLI、ChatGPT.app 或 Codex.app，且账户能返回 rate limit 数据。  
 > **Claude：** 需要已登录的 Claude Code（`claude`）。Quota 通过系统 `security` 工具从 macOS 钥匙串读取登录令牌，无需授权弹窗。  
 > **Grok：** 需要已登录的 Grok CLI（`grok login`）。部分网络环境访问 Grok 计费接口时可能需要代理。
-> **MiMo：** 需要 MiMoCode 已登录小米，并在“设置 → 服务”中手动填写控制台 Cookie。
+> **MiMo：** 在系统默认浏览器登录小米控制台即可自动获取，设置中的 Cookie 留空。
 > **DeepSeek：** 需要在“设置 → 服务”中填写 API Key，或设置 `DEEPSEEK_API_KEY` / `~/.deepseek/api_key`。
 
 ## 特性
@@ -92,12 +92,12 @@ ditto .build/package/Quota.app /Applications/Quota.app
 | **Codex** | 本地 `codex app-server`（`account/rateLimits/read`） | 5 小时 + 周限额；有重置额度时显示 |
 | **Grok** | 本地 `~/.grok/auth.json` + Grok CLI 计费接口 | 周额度窗口（与 Grok CLI `/usage` 同源） |
 | **Claude** | Claude Code OAuth 登录 + Anthropic 使用量接口 | 5 小时会话与周额度 |
-| **MiMo** | MiMoCode 账号 + 小米控制台 Cookie | 套餐与补偿额度合并后的 Credits |
+| **MiMo** | 默认浏览器的小米登录状态，或手动 Cookie | 套餐与补偿额度合并后的 Credits |
 | **DeepSeek** | DeepSeek API Key + `/user/balance` | 当前账户余额 |
 
 #### MiMo 与 DeepSeek 凭据
 
-- **MiMo：** 先使用 MiMoCode 登录小米，再从已登录的 `platform.xiaomimimo.com` 请求中复制完整 Cookie 请求头，粘贴到“设置 → 服务 → MiMo Cookie”。
+- **MiMo：** 在系统默认浏览器登录 `platform.xiaomimimo.com`，然后启用 MiMo。使用与 [CodexBar](https://github.com/steipete/CodexBar) 相同的 SweetCookieKit 读取登录 Cookie；Chrome 等浏览器可能请求钥匙串授权，Safari 可能需要完全磁盘访问权限。可在“设置 → 服务 → MiMo Cookie”手动填写备用 Cookie；填写后优先使用手动值，清空后恢复自动获取。
 - **DeepSeek：** 将 API Key 粘贴到“设置 → 服务 → DeepSeek API Key”。仍兼容 `DEEPSEEK_API_KEY` 与 `~/.deepseek/api_key`，且它们优先。
 - 手动填写的凭据仅保存在 macOS 钥匙串中；清空输入框会删除相应的已保存值。
 
@@ -171,7 +171,7 @@ Quota 在本地通过 CLI/登录态与对应服务端读取额度，不会把额
 - **菜单栏没有图标：** 请从 `Applications` 启动 `Quota.app`，不要直接运行 `.build/release/Quota`。
 - **没有 Codex 数据：** 确认已安装 Codex CLI / ChatGPT.app / Codex.app 并登录；`codex` 在 `PATH` 中，或应用在 `/Applications`。
 - **没有 Grok 数据：** 先执行 `grok login`；若请求超时，在设置里配置代理（部分网络环境需要）。
-- **没有 MiMo 数据：** 确认 MiMoCode 已登录小米，并在“设置 → 服务”中更新控制台 Cookie。
+- **没有 MiMo 数据：** 确认默认浏览器已登录小米控制台并允许 Cookie 读取；登录过期时重新登录后刷新。
 - **没有 DeepSeek 数据：** 在“设置 → 服务”中填写有效 API Key，或配置兼容的外部凭据来源。
 - **没有通知：** 在系统设置中检查 Quota 的通知权限（需标准 `.app` 安装）。
 
@@ -180,7 +180,7 @@ Quota 在本地通过 CLI/登录态与对应服务端读取额度，不会把额
 - macOS 14 Sonoma 或更高版本
 - Codex：Codex CLI、ChatGPT.app 或 Codex.app + 可读 rate limit 的账户
 - Grok：已登录的 Grok CLI（`grok login`）
-- MiMo：MiMoCode 已登录小米，并提供有效的控制台 Cookie
+- MiMo：默认浏览器已登录小米控制台，或提供有效的控制台 Cookie
 - DeepSeek：有效的 DeepSeek API Key
 
 ## 开发
