@@ -214,10 +214,18 @@ namespace Quota.Windows
                 {
                     string output = finder.StandardOutput.ReadToEnd();
                     finder.WaitForExit(3000);
-                    return output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault(File.Exists);
+                    return SelectCodexExecutable(output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries));
                 }
             }
             catch { return null; }
+        }
+
+        internal static string SelectCodexExecutable(IEnumerable<string> candidates)
+        {
+            return candidates.FirstOrDefault(path =>
+                (path.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ||
+                 path.EndsWith(".cmd", StringComparison.OrdinalIgnoreCase) ||
+                 path.EndsWith(".bat", StringComparison.OrdinalIgnoreCase)) && File.Exists(path));
         }
 
         public void Stop()

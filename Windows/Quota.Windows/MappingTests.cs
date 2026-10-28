@@ -11,6 +11,7 @@ namespace Quota.Windows
             {
                 L.Settings = new AppSettings { Language = UiLanguage.English };
                 TestCodex();
+                TestCodexExecutableSelection();
                 TestClaude();
                 TestGrokDefaults();
                 TestMiMo();
@@ -23,6 +24,13 @@ namespace Quota.Windows
                 Console.Error.WriteLine(ex.ToString());
                 return 1;
             }
+        }
+
+        private static void TestCodexExecutableSelection()
+        {
+            string executable = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
+            string result = CodexProvider.SelectCodexExecutable(new[] { executable.Substring(0, executable.Length - 4), executable });
+            Assert(result == executable, "Codex skips extensionless scripts");
         }
 
         private static void TestCodex()
