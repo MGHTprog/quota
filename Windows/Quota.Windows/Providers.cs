@@ -97,9 +97,47 @@ namespace Quota.Windows
                 try { account = await RpcAsync(2, "account/read", new Dictionary<string, object>(), token); }
                 catch { }
                 var limits = await RpcAsync(3, "account/rateLimits/read", new Dictionary<string, object>(), token);
-                return MapCodex(limits, account);
+                var state = MapCodex(limits, account);
+                state.Model = ReadLatestModel();
+                return state;
             }
             finally { Stop(); }
+        }
+
+        private static string ReadLatestModel()
+        {
+            try
+            {
+                string home = Environment.GetEnvironmentVariable("CODEX_HOME");
+                if (String.IsNullOrWhiteSpace(home)) home = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".codex");
+                string directory = Path.Combine(home, "sessions");
+                if (!Directory.Exists(directory)) return null;
+                string latestTime = null, latestModel = null;
+                foreach (var file in new DirectoryInfo(directory).GetFiles("*.jsonl", SearchOption.AllDirectories).OrderByDescending(x => x.LastWriteTimeUtc).Take(20))
+                {
+                    using (var stream = new FileStream(file.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+                    using (var reader = new StreamReader(stream, Encoding.UTF8))
+                    {
+                        if (stream.Length > 2097152) { stream.Seek(-2097152, SeekOrigin.End); reader.ReadLine(); }
+                        string line;
+                        while ((line = reader.ReadLine()) != null)
+                        {
+                            if (!line.Contains("turn_context")) continue;
+                            try
+                            {
+                                var root = Json.Parse(line);
+                                if (Json.Text(root, "type") != "turn_context") continue;
+                                string timestamp = Json.Text(root, "timestamp");
+                                string model = Json.Text(Json.Get(root, "payload"), "model");
+                                if (!String.IsNullOrEmpty(timestamp) && !String.IsNullOrEmpty(model) && model != "codex-auto-review" && String.CompareOrdinal(timestamp, latestTime) > 0) { latestTime = timestamp; latestModel = model; }
+                            }
+                            catch { }
+                        }
+                    }
+                }
+                return latestModel;
+            }
+            catch { return null; }
         }
 
         private static ProcessStartInfo CreateStartInfo(string executable)
@@ -203,6 +241,30 @@ namespace Quota.Windows
 
         private static string LocateCodex()
         {
+            // Desktop app updates change its hashed bin directory while the user
+            // PATH can still point to an older, removed directory.
+            try
+            {
+                foreach (var running in Process.GetProcessesByName("codex"))
+                {
+                    try
+                    {
+                        string path = running.MainModule.FileName;
+                        string desktopRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OpenAI", "Codex", "bin") + Path.DirectorySeparatorChar;
+                        if (path.StartsWith(desktopRoot, StringComparison.OrdinalIgnoreCase) && File.Exists(path)) return path;
+                    }
+                    catch { }
+                    finally { running.Dispose(); }
+                }
+                string bin = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OpenAI", "Codex", "bin");
+                if (Directory.Exists(bin))
+                {
+                    var desktop = new DirectoryInfo(bin).GetDirectories().OrderByDescending(x => x.LastWriteTimeUtc)
+                        .Select(x => Path.Combine(x.FullName, "codex.exe")).FirstOrDefault(File.Exists);
+                    if (desktop != null) return desktop;
+                }
+            }
+            catch { }
             try
             {
                 var info = new ProcessStartInfo("where.exe", "codex")
@@ -222,10 +284,10 @@ namespace Quota.Windows
 
         internal static string SelectCodexExecutable(IEnumerable<string> candidates)
         {
-            return candidates.FirstOrDefault(path =>
-                (path.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ||
-                 path.EndsWith(".cmd", StringComparison.OrdinalIgnoreCase) ||
-                 path.EndsWith(".bat", StringComparison.OrdinalIgnoreCase)) && File.Exists(path));
+            var paths = candidates.Where(File.Exists).ToList();
+            return paths.FirstOrDefault(path => path.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                ?? paths.FirstOrDefault(path => path.EndsWith(".cmd", StringComparison.OrdinalIgnoreCase)
+                    || path.EndsWith(".bat", StringComparison.OrdinalIgnoreCase));
         }
 
         public void Stop()
@@ -505,6 +567,8 @@ namespace Quota.Windows
                 Id = "token-plan",
                 Title = L.T("套餐额度", "Token Plan"),
                 UsedPercent = usedPercent,
+                UsedAmount = used,
+                TotalAmount = total,
                 ResetsAt = ParseResetDate(Json.Text(detailData, "currentPeriodEnd"))
             });
             return state;

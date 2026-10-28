@@ -188,7 +188,7 @@ namespace Quota.Windows
 
         private Control CreateStateCard(ProviderState state)
         {
-            string detail = String.Join("  ", new[] { state.Plan, state.Badge }.Where(x => !String.IsNullOrWhiteSpace(x)));
+            string detail = String.Join("  ", new[] { state.Model, state.Plan, state.Badge }.Where(x => !String.IsNullOrWhiteSpace(x)));
             var panel = CardPanel(state.DisplayName, detail);
             int y = 48;
             if (state.Windows.Count == 0)
@@ -207,7 +207,14 @@ namespace Quota.Windows
                 var bar = new QuotaBar { Location = new Point(16, y), Size = new Size(369, 9), Remaining = window.RemainingPercent };
                 panel.Controls.Add(bar);
                 y += 16;
+                if (window.UsedAmount.HasValue && window.TotalAmount.HasValue)
+                {
+                    string usage = L.T("当前套餐用量 ", "Current plan usage ") + window.UsedAmount.Value.ToString("N0") + " / " + window.TotalAmount.Value.ToString("N0");
+                    panel.Controls.Add(new Label { Text = usage, Location = new Point(16, y), Size = new Size(369, 18), ForeColor = Color.DimGray });
+                    y += 20;
+                }
                 string reset = window.ResetsAt.HasValue ? L.Reset + " " + window.ResetsAt.Value.ToString("M/d HH:mm") : L.Reset + " --";
+                if (state.ProviderId == ProviderId.MiMo) reset = L.T("到期时间 ", "Expires ") + (window.ResetsAt.HasValue ? window.ResetsAt.Value.ToString("yyyy-MM-dd HH:mm") : "--");
                 panel.Controls.Add(new Label { Text = reset, Location = new Point(16, y), Size = new Size(369, 18), ForeColor = Color.DimGray });
                 y += 26;
             }

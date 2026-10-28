@@ -16,6 +16,8 @@ namespace Quota.Windows
         public DateTime? ResetsAt;
         public bool Available = true;
         public string Scope;
+        public double? UsedAmount;
+        public double? TotalAmount;
 
         public double RemainingPercent
         {
@@ -28,6 +30,7 @@ namespace Quota.Windows
         public ProviderId ProviderId;
         public string DisplayName;
         public string Plan;
+        public string Model;
         public string Badge;
         public string Source;
         public DateTime UpdatedAt;

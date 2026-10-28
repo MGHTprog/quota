@@ -85,6 +85,7 @@ namespace Quota.Windows
             Assert(state.Badge == "3.3B Credits", "MiMo remaining credits badge");
             Assert(state.Plan == "Lite Monthly", "MiMo plan name");
             Assert(state.Windows[0].ResetsAt.HasValue, "MiMo reset time");
+            Assert(state.Windows[0].UsedAmount == 1100000000 && state.Windows[0].TotalAmount == 4400000000, "MiMo exact usage and limit");
             Assert(MiMoCredentialStore.NormalizeCookie(" Cookie: a=1; b=2 ") == "a=1; b=2",
                 "MiMo cookie normalization");
             Assert(MiMoCredentialStore.NormalizeCookie("Accept: application/json\r\nCookie: a=1; b=2\r\nOrigin: https://platform.xiaomimimo.com") == "a=1; b=2",

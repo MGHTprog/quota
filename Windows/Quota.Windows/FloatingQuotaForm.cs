@@ -22,6 +22,8 @@ namespace Quota.Windows
         private bool moved;
         private Point dragOrigin;
         private Point windowOrigin;
+        private readonly Timer rotationTimer = new Timer();
+        private int rotationIndex;
 
         public FloatingQuotaForm(
             Action openMainWindow,
@@ -43,7 +45,7 @@ namespace Quota.Windows
             ShowInTaskbar = false;
             TopMost = true;
             StartPosition = FormStartPosition.Manual;
-            ClientSize = new Size(256, 52);
+            ClientSize = new Size(250, 52);
             MinimumSize = MaximumSize = Size;
             BackColor = Color.FromArgb(32, 36, 43);
             Opacity = 0.96;
@@ -57,6 +59,8 @@ namespace Quota.Windows
             MouseDown += OnWidgetMouseDown;
             MouseMove += OnWidgetMouseMove;
             MouseUp += OnWidgetMouseUp;
+            rotationTimer.Tick += delegate { AdvanceRotation(); };
+            rotationTimer.Start();
         }
 
         protected override bool ShowWithoutActivation { get { return true; } }
@@ -88,8 +92,35 @@ namespace Quota.Windows
         {
             settings = value;
             results = providerResults;
+            if (settings != null && (rotationIndex >= settings.ProviderOrder.Count || !settings.EnabledProviders.Contains(settings.ProviderOrder[rotationIndex])))
+                rotationIndex = settings.ProviderOrder.FindIndex(settings.EnabledProviders.Contains);
+            ScheduleRotation();
             BuildMenu();
             Invalidate();
+        }
+
+        private void ScheduleRotation()
+        {
+            int[] seconds = { 8, 3, 1, 1, 1 };
+            rotationTimer.Interval = seconds[Math.Max(0, Math.Min(rotationIndex, seconds.Length - 1))] * 1000;
+        }
+
+        private void AdvanceRotation()
+        {
+            if (settings == null || settings.ProviderOrder.Count == 0) return;
+            for (int i = 0; i < settings.ProviderOrder.Count; i++)
+            {
+                rotationIndex = (rotationIndex + 1) % settings.ProviderOrder.Count;
+                if (settings.EnabledProviders.Contains(settings.ProviderOrder[rotationIndex])) break;
+            }
+            ScheduleRotation();
+            Invalidate();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) rotationTimer.Dispose();
+            base.Dispose(disposing);
         }
 
         public void ShowAtSavedPosition(AppSettings value)
@@ -156,6 +187,18 @@ namespace Quota.Windows
                     return;
                 }
 
+                var current = settings.ProviderOrder[Math.Max(0, rotationIndex)];
+                if (current == ProviderId.Codex)
+                {
+                    DrawCodexColumns(e.Graphics, titleFont, valueFont, white, muted);
+                    return;
+                }
+                if (current == ProviderId.MiMo)
+                {
+                    DrawMiMo(e.Graphics, titleFont);
+                    return;
+                }
+                enabled = new List<ProviderId> { current };
                 float left = 10;
                 float availableWidth = Width - 20;
                 float columnWidth = availableWidth / enabled.Count;
@@ -168,7 +211,11 @@ namespace Quota.Windows
                         using (var divider = new Pen(Color.FromArgb(70, 78, 90)))
                             e.Graphics.DrawLine(divider, x, 8, x, Height - 8);
                     }
-                    e.Graphics.DrawString(ProviderInfo.Name(id), titleFont, muted, x + 6, 6);
+                    string heading = ProviderInfo.Name(id);
+                    ProviderResult headingResult;
+                    if (id == ProviderId.Codex && results != null && results.TryGetValue(id, out headingResult) && headingResult.IsSuccess && !String.IsNullOrEmpty(headingResult.State.Model))
+                        heading += " · " + headingResult.State.Model;
+                    e.Graphics.DrawString(heading, titleFont, muted, x + 6, 6);
 
                     ProviderResult result;
                     QuotaWindow window = null;
@@ -177,6 +224,12 @@ namespace Quota.Windows
                     {
                         window = result.State.Windows.FirstOrDefault();
                         badge = result.State.Badge;
+                        if (id == ProviderId.Codex && result.State.Windows.Count > 1)
+                        {
+                            var second = result.State.Windows[1];
+                            e.Graphics.DrawString(window.Title + " " + Math.Round(window.RemainingPercent) + "%   " + second.Title + " " + Math.Round(second.RemainingPercent) + "%", titleFont, white, x + 6, 26);
+                            continue;
+                        }
                     }
                     if (window == null)
                     {
@@ -187,7 +240,9 @@ namespace Quota.Windows
                     bool isMoney = window.Id == "balance";
                     if (isMoney && !String.IsNullOrWhiteSpace(badge))
                     {
-                        e.Graphics.DrawString(badge, valueFont, white, x + 6, 22);
+                        using (var moneyFont = new Font("Segoe UI Semibold", 15F))
+                            TextRenderer.DrawText(e.Graphics, badge, moneyFont, new Rectangle(10, 20, Width - 20, 28), Color.WhiteSmoke,
+                                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis);
                     }
                     else
                     {
@@ -200,6 +255,76 @@ namespace Quota.Windows
                     }
                 }
             }
+        }
+
+        private void DrawMiMo(Graphics graphics, Font font)
+        {
+            ProviderResult result = null;
+            var state = results != null && results.TryGetValue(ProviderId.MiMo, out result) && result.IsSuccess ? result.State : null;
+            var flags = TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine;
+            if (state == null)
+            {
+                TextRenderer.DrawText(graphics, "MiMo", font, new Rectangle(10, 4, Width - 20, 20), Color.WhiteSmoke, flags);
+                TextRenderer.DrawText(graphics, result == null ? L.Loading : result.Error, font, new Rectangle(10, 25, Width - 20, 20), Color.LightCoral, flags);
+                return;
+            }
+            var window = state == null ? null : state.Windows.FirstOrDefault();
+            string expiry = window != null && window.ResetsAt.HasValue ? window.ResetsAt.Value.ToString("yyyy-MM-dd HH:mm") : "--";
+            string usage = window != null && window.UsedAmount.HasValue && window.TotalAmount.HasValue
+                ? window.UsedAmount.Value.ToString("N0") + " / " + window.TotalAmount.Value.ToString("N0") : "--";
+            string percent = window == null ? "--" : Math.Round(window.RemainingPercent) + "%";
+            TextRenderer.DrawText(graphics, "MiMo  " + L.T("到期 ", "Expires ") + expiry, font, new Rectangle(8, 3, Width - 78, 21), Color.WhiteSmoke, flags);
+            using (var percentFont = new Font("Segoe UI Semibold", 18F))
+                TextRenderer.DrawText(graphics, percent, percentFont, new Rectangle(Width - 78, 3, 70, Height - 6), Color.FromArgb(80, 214, 142),
+                    TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis);
+            using (var usageFont = new Font("Segoe UI Semibold", 6.5F))
+                TextRenderer.DrawText(graphics, L.T("用量 ", "Usage ") + usage, usageFont, new Rectangle(8, 25, Width - 86, 20), Color.WhiteSmoke, flags);
+        }
+
+        private void DrawCodexColumns(Graphics graphics, Font titleFont, Font valueFont, Brush white, Brush muted)
+        {
+            ProviderResult result;
+            ProviderState state = results != null && results.TryGetValue(ProviderId.Codex, out result) && result.IsSuccess ? result.State : null;
+            var fiveHour = state == null ? null : state.Windows.FirstOrDefault(w => w.Id == "fiveHour");
+            var weekly = state == null ? null : state.Windows.FirstOrDefault(w => w.Id == "weekly");
+            string model = state == null || String.IsNullOrWhiteSpace(state.Model) ? "--" : FormatModel(state.Model);
+            var columns = new[] { new Rectangle(6, 3, 112, Height - 6), new Rectangle(118, 3, 61, Height - 6), new Rectangle(179, 3, Width - 185, Height - 6) };
+            using (var divider = new Pen(Color.FromArgb(70, 78, 90)))
+            {
+                graphics.DrawLine(divider, columns[1].Left, 8, columns[1].Left, Height - 8);
+                graphics.DrawLine(divider, columns[2].Left, 8, columns[2].Left, Height - 8);
+            }
+            var flags = TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine | TextFormatFlags.NoPadding;
+            string plan = state == null || String.IsNullOrWhiteSpace(state.Plan) ? "--" : state.Plan;
+            string header = "Codex " + plan;
+            if (state != null && !String.IsNullOrWhiteSpace(state.Badge))
+                header += " " + state.Badge.Replace("重置额度 ", "重置 ").Replace("Reset credits ", "Reset ");
+            using (var headerFont = new Font("Segoe UI Semibold", 6.5F))
+                TextRenderer.DrawText(graphics, header, headerFont, new Rectangle(columns[0].X, 4, columns[0].Width, 17), Color.FromArgb(165, 175, 188), flags);
+            using (var modelFont = new Font("Segoe UI Semibold", 10F))
+                TextRenderer.DrawText(graphics, model, modelFont, new Rectangle(columns[0].X, 20, columns[0].Width, 26), Color.WhiteSmoke, flags);
+            DrawCodexLimit(graphics, titleFont, valueFont, columns[1], L.FiveHour, fiveHour);
+            DrawCodexLimit(graphics, titleFont, valueFont, columns[2], L.Weekly, weekly);
+        }
+
+        private static void DrawCodexLimit(Graphics graphics, Font titleFont, Font valueFont, Rectangle bounds, string title, QuotaWindow window)
+        {
+            var flags = TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine | TextFormatFlags.NoPadding;
+            TextRenderer.DrawText(graphics, title, titleFont, new Rectangle(bounds.X, 4, bounds.Width, 17), Color.FromArgb(165, 175, 188), flags);
+            double remaining = window == null ? 0 : window.RemainingPercent;
+            Color color = window == null ? Color.WhiteSmoke : remaining < 5 ? Color.FromArgb(255, 91, 91) : remaining < 20 ? Color.FromArgb(255, 174, 66) : Color.FromArgb(80, 214, 142);
+            TextRenderer.DrawText(graphics, window == null ? "--" : Math.Round(remaining) + "%", valueFont, new Rectangle(bounds.X, 20, bounds.Width, HeightForValue(bounds)), color, flags);
+        }
+
+        private static int HeightForValue(Rectangle bounds) { return Math.Max(1, bounds.Height - 17); }
+
+        internal static string FormatModel(string model)
+        {
+            if (!model.StartsWith("gpt-", StringComparison.OrdinalIgnoreCase)) return model;
+            var parts = model.Substring(4).Split('-');
+            for (int i = 1; i < parts.Length; i++)
+                if (parts[i].Length > 0) parts[i] = Char.ToUpperInvariant(parts[i][0]) + parts[i].Substring(1);
+            return "GPT" + String.Join(" ", parts);
         }
 
         private void OnWidgetMouseDown(object sender, MouseEventArgs e)
