@@ -250,3 +250,21 @@ enum MiMoQuotaError: LocalizedError {
         }
     }
 }
+
+/// The official /v1/platform/token_plan response uses UTC period timestamps.
+struct MiMoTokenPlanResponse: Decodable {
+    struct Period: Decodable { var end_at: String }
+    struct Credits: Decodable {
+        var total_credits: Double
+        var used_credits: Double
+        var remaining_credits: Double
+    }
+    var plan_code: String
+    var period: Period
+    var quota: Credits
+    var usageResponse: MiMoUsageResponse {
+        MiMoUsageResponse(code: 0, data: MiMoUsageData(usage: MiMoUsageGroup(items: [
+            MiMoUsageItem(name: "plan_total_token", used: quota.used_credits, limit: quota.total_credits)
+        ])))
+    }
+}

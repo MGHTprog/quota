@@ -122,6 +122,33 @@ final class MiMoAuthStore {
         try keychainWriter(normalized?.isEmpty == false ? normalized : nil)
     }
 
+    func loadAPIKey() throws -> String {
+        let manual = environment["XIAOMI_MIMO_API_KEY"] ?? Self.readAPIKey() ?? ""
+        if !manual.isEmpty {
+            guard manual.hasPrefix("tp-"), !manual.contains(where: { $0.isWhitespace }) else {
+                throw MiMoQuotaError.invalidMiMoCodeAuth
+            }
+            return manual
+        }
+        for url in authFileURLs {
+            guard let data = loadData(from: url),
+                  let entries = try? JSONDecoder().decode([String: AuthEntry].self, from: data),
+                  let key = entries["xiaomi"]?.key, key.hasPrefix("tp-") else { continue }
+            return key
+        }
+        throw MiMoQuotaError.sessionCookieMissing
+    }
+
+    func savedAPIKey() -> String { Self.readAPIKey() ?? "" }
+
+    func saveAPIKey(_ value: String) throws {
+        let key = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard key.isEmpty || (key.hasPrefix("tp-") && !key.contains(where: { $0.isWhitespace })) else {
+            throw MiMoQuotaError.invalidMiMoCodeAuth
+        }
+        try Self.writeAPIKey(key.isEmpty ? nil : key)
+    }
+
     private func loadData(from url: URL) -> Data? {
         guard fileManager.fileExists(atPath: url.path) else { return nil }
         return try? Data(contentsOf: url)
@@ -176,6 +203,51 @@ final class MiMoAuthStore {
                 throw MiMoQuotaError.keychainWriteFailed
             }
         }
+    }
+
+    private static func readAPIKey() -> String? {
+        var query = apiKeyQuery
+        query[kSecReturnData as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
+
+        var result: CFTypeRef?
+        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
+              let data = result as? Data else {
+            return nil
+        }
+        return String(data: data, encoding: .utf8)
+    }
+
+    private static func writeAPIKey(_ cookie: String?) throws {
+        if let cookie {
+            let data = Data(cookie.utf8)
+            let updateStatus = SecItemUpdate(
+                apiKeyQuery as CFDictionary,
+                [kSecValueData as String: data] as CFDictionary
+            )
+
+            if updateStatus == errSecItemNotFound {
+                var item = apiKeyQuery
+                item[kSecValueData as String] = data
+                item[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+                guard SecItemAdd(item as CFDictionary, nil) == errSecSuccess else {
+                    throw MiMoQuotaError.keychainWriteFailed
+                }
+            } else if updateStatus != errSecSuccess {
+                throw MiMoQuotaError.keychainWriteFailed
+            }
+        } else {
+            let status = SecItemDelete(apiKeyQuery as CFDictionary)
+            guard status == errSecSuccess || status == errSecItemNotFound else {
+                throw MiMoQuotaError.keychainWriteFailed
+            }
+        }
+    }
+
+    private static var apiKeyQuery: [String: Any] {
+        var query = keychainQuery
+        query[kSecAttrService as String] = "Quota-MiMo-api-key"
+        return query
     }
 
     private static var keychainQuery: [String: Any] {

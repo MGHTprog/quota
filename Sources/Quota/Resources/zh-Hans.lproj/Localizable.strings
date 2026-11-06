@@ -50,10 +50,10 @@
 "settings.providers.help" = "服务将按此顺序显示在弹窗顶部，并同步显示在 Touch Bar。";
 "settings.providers.selectedCount" = "已选择 %d/%d";
 "settings.providers.dragHint" = "拖动排序";
-"settings.providers.mimoCookie.label" = "MiMo Cookie";
-"settings.providers.mimoCookie.placeholder" = "留空以自动读取默认浏览器";
-"settings.providers.mimoCookie.help" = "默认自动读取浏览器中的小米登录状态，请先登录 platform.xiaomimimo.com。Chrome 等浏览器可能请求钥匙串授权，Safari 可能需要完全磁盘访问权限。手动 Cookie 仅保存在钥匙串中。";
-"settings.providers.mimoCookie.saveErrorTitle" = "无法保存 MiMo Cookie";
+"settings.providers.mimoCookie.label" = "MiMo API Key";
+"settings.providers.mimoCookie.placeholder" = "tp-…";
+"settings.providers.mimoCookie.help" = "输入 Token Plan 的 tp- API Key，安全保存在钥匙串；留空读取 MiMoCode auth.json。";
+"settings.providers.mimoCookie.saveErrorTitle" = "无法保存 MiMo API Key";
 "settings.providers.deepseekAPIKey.label" = "DeepSeek API Key";
 "settings.providers.deepseekAPIKey.placeholder" = "粘贴 DeepSeek API 密钥";
 "settings.providers.deepseekAPIKey.help" = "手动填写的密钥仅保存在 macOS 钥匙串中；仍兼容 DEEPSEEK_API_KEY 和 ~/.deepseek/api_key，且它们优先。";
@@ -82,11 +82,11 @@
 "error.claudeRequestFailed" = "Claude 请求失败（HTTP %d）";
 
 "error.mimoCodeNotSignedIn" = "MiMoCode 尚未登录小米，请先运行 mimo 并完成登录";
-"error.mimoCodeInvalidAuth" = "无法读取 MiMoCode auth.json 中的小米账号";
-"error.mimoCookieMissing" = "请在默认浏览器登录 platform.xiaomimimo.com；也可在设置中填写 Cookie";
-"error.mimoUnauthorized" = "MiMo 控制台 Cookie 缺失或已过期";
+"error.mimoCodeInvalidAuth" = "请输入有效的 tp- API Key";
+"error.mimoCookieMissing" = "请在设置中填写 MiMo Token Plan API Key（tp-）";
+"error.mimoUnauthorized" = "MiMo API Key 无效或已过期";
 "error.mimoRequestFailed" = "MiMo 请求失败（代码 %d）";
-"error.mimoKeychainWriteFailed" = "无法将 MiMo 控制台 Cookie 保存到 macOS 钥匙串";
+"error.mimoKeychainWriteFailed" = "无法将 MiMo API Key 保存到 macOS 钥匙串";
 
 "error.deepseekUnauthorized" = "DeepSeek API 密钥无效或已过期";
 "error.deepseekNotSignedIn" = "未找到 DeepSeek API 密钥。请在“设置 → 服务”中填写，或设置 DEEPSEEK_API_KEY，或创建 ~/.deepseek/api_key 文件。";

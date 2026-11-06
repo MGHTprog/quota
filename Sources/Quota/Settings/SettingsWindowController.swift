@@ -692,7 +692,7 @@ private final class SettingsViewController: NSViewController {
     }
 
     private func reloadProviderCredentials() {
-        loadedMiMoCookie = MiMoAuthStore.shared.savedSessionCookie()
+        loadedMiMoCookie = MiMoAuthStore.shared.savedAPIKey()
         mimoCookieField.stringValue = loadedMiMoCookie
         loadedDeepSeekAPIKey = DeepSeekAuthStore.shared.savedAPIKey()
         deepseekAPIKeyField.stringValue = loadedDeepSeekAPIKey
@@ -719,8 +719,8 @@ private final class SettingsViewController: NSViewController {
             .trimmingCharacters(in: .whitespacesAndNewlines)
         if mimoCookie != loadedMiMoCookie {
             do {
-                try MiMoAuthStore.shared.saveSessionCookie(mimoCookie)
-                loadedMiMoCookie = MiMoAuthStore.shared.savedSessionCookie()
+                try MiMoAuthStore.shared.saveAPIKey(mimoCookie)
+                loadedMiMoCookie = MiMoAuthStore.shared.savedAPIKey()
             } catch {
                 presentCredentialSaveError(title: L.mimoCookieSaveErrorTitle, error: error)
                 return
